@@ -1,0 +1,3 @@
+[submodule "pb2025_sentry_nav/chase"]
+	path = pb2025_sentry_nav/chase
+	url = https://github.com/sunzhixian115/qiqi_chase.git
