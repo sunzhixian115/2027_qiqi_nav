@@ -1,0 +1,19 @@
+# ===== 2026_qiqi_final_nav 工作空间顶层忽略规则 =====
+# 构建 / 运行产物
+build/
+log/
+install/
+devel/
+*.bag
+*.log
+
+# Python 缓存
+__pycache__/
+*.pyc
+.cache/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*~
+.DS_Store
