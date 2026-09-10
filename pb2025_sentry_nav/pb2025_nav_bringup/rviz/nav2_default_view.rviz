@@ -104,7 +104,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        front_mid360:
+        odin1_base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -191,7 +191,7 @@ Visualization Manager:
           Value: true
         front_left_wheel:
           Value: true
-        front_mid360:
+        odin1_base_link:
           Value: true
         front_right_wheel:
           Value: true
@@ -241,7 +241,7 @@ Visualization Manager:
                     {}
                 front_left_wheel:
                   {}
-                front_mid360:
+                odin1_base_link:
                   {}
                 front_right_wheel:
                   {}

@@ -28,8 +28,6 @@ from nav2_common.launch import RewrittenYaml
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory("pb2025_nav_bringup")
-    point_lio_dir = get_package_share_directory("point_lio")
-
     namespace = LaunchConfiguration("namespace")
     map_yaml_file = LaunchConfiguration("map")
     use_sim_time = LaunchConfiguration("use_sim_time")
@@ -115,34 +113,6 @@ def generate_launch_description():
 
     declare_log_level_cmd = DeclareLaunchArgument(
         "log_level", default_value="info", description="log level"
-    )
-
-    # Static transform: map -> odom (identity, replaces small_gicp)
-    start_static_tf_map_odom = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="static_tf_map_odom",
-        output="screen",
-        arguments=["--x", "0", "--y", "0", "--z", "0",
-                   "--roll", "0", "--pitch", "0", "--yaw", "0",
-                   "--frame-id", "map", "--child-frame-id", "odom"],
-    )
-
-    # ================= VIP 区 (CPU 2,3) 
-    start_point_lio_node = Node(
-        package="point_lio",
-        executable="pointlio_mapping",
-        name="point_lio",
-        output="screen",
-        respawn=use_respawn,
-        respawn_delay=2.0,
-        parameters=[
-            configured_params,
-            {"prior_pcd.prior_pcd_map_path": prior_pcd_file},
-        ],
-        arguments=["--ros-args", "--log-level", log_level],
-        # Point-LIO 独享 CPU 2,3
-        prefix=['taskset -c 2,3'], 
     )
 
     load_nodes = GroupAction(
@@ -232,8 +202,6 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
-    ld.add_action(start_static_tf_map_odom)
-    ld.add_action(start_point_lio_node)
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 

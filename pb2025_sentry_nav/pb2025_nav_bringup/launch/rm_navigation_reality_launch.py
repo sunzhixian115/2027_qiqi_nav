@@ -17,7 +17,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution
@@ -56,13 +56,21 @@ def generate_launch_description():
     declare_slam_cmd = DeclareLaunchArgument(
         "slam",
         default_value="False",
-        description="Whether run a SLAM. If True, it will disable small_gicp and send static tf (map->odom)",
+        description="Unsupported for Odin1. Use Odin1 custom_map_mode: 1 and save_pcd.sh for mapping.",
     )
+
+    def reject_legacy_slam(context):
+        if context.launch_configurations.get("slam", "False").lower() == "true":
+            raise RuntimeError(
+                "slam:=True starts the legacy Point-LIO pipeline, which is not compatible "
+                "with Odin1. Set Odin1 custom_map_mode: 1 and use save_pcd.sh instead."
+            )
+        return []
 
     declare_world_cmd = DeclareLaunchArgument(
         "world",
-        default_value="rmul_2024",
-        description="Select world: 'rmul_2024' or 'rmuc_2024' (map file share the same name as the this parameter)",
+        default_value="rmuc_2026",
+        description="Map name under map/reality and pcd/reality; override for another map.",
     )
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
@@ -133,6 +141,7 @@ def generate_launch_description():
         "use_rviz", default_value="True", description="Whether to start RVIZ"
     )
 
+
     # Create our own temporary YAML files that include substitutions
 
     configured_params = ParameterFile(
@@ -157,15 +166,26 @@ def generate_launch_description():
         }.items(),
     )
 
-    start_livox_ros_driver2_node = Node(
-        package="livox_ros_driver2",
-        executable="livox_ros_driver2_node",
-        name="livox_ros_driver2",
+    start_odin_ros_driver_node = Node(
+        package="odin_ros_driver",
+        executable="host_sdk_sample",
+        name="odin_ros_driver",
         output="screen",
         namespace=namespace,
-        parameters=[configured_params],
+        parameters=[{
+            "config_file": os.path.join(
+                get_package_share_directory("odin_ros_driver"),
+                "config",
+                "control_command.yaml",
+            )
+        }],
+        additional_env={
+            "LD_LIBRARY_PATH": "/usr/local/lib:/usr/lib/x86_64-linux-gnu:" +
+            os.environ.get("LD_LIBRARY_PATH", ""),
+        },
         prefix=['taskset -c 0,1']
     )
+
 
     rviz_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(launch_dir, "rviz_launch.py")),
@@ -206,6 +226,7 @@ def generate_launch_description():
     # Declare the launch options
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_slam_cmd)
+    ld.add_action(OpaqueFunction(function=reject_legacy_slam))
     ld.add_action(declare_world_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_prior_pcd_file_cmd)
@@ -220,7 +241,7 @@ def generate_launch_description():
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(start_robot_state_publisher_cmd)
-    ld.add_action(start_livox_ros_driver2_node)
+    ld.add_action(start_odin_ros_driver_node)
     ld.add_action(bringup_cmd)
     ld.add_action(joy_teleop_cmd)
     ld.add_action(rviz_cmd)

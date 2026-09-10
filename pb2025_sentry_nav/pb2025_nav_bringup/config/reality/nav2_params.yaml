@@ -5,7 +5,7 @@ livox_ros_driver2:
     data_src: 0                                         # 0-lidar, others-Invalid data src
     publish_freq: 20.0                                  # frequency of publish, 5.0, 10.0, 20.0, 50.0, etc.数据发布频率（Hz），提高了耗费算力
     output_data_type: 0
-    frame_id: front_mid360                              #雷达的坐标系名称，必须与后续所有配置中提到的雷达帧名称一致。
+    frame_id: odin1_base_link                           # Odin1 雷达坐标系
     user_config_path: $(find-pkg-share pb2025_nav_bringup)/config/reality/mid360_user_config.json
     cmdline_input_bd_code: livox0000000001
     lvx_file_path: ""
@@ -92,12 +92,12 @@ loam_interface:
     registered_scan_topic: "cloud_registered"
     odom_frame: "odom"
     base_frame: "base_footprint"
-    lidar_frame: "front_mid360"
+    lidar_frame: "odin1_base_link"
 
 sensor_scan_generation:
   ros__parameters:
     use_sim_time: False
-    lidar_frame: "front_mid360"
+    lidar_frame: "odin1_base_link"
     base_frame: "base_footprint"
     robot_base_frame: "gimbal_yaw"
 
@@ -153,7 +153,7 @@ terrain_analysis_ext:
 fake_vel_transform:
   ros__parameters:
     use_sim_time: False
-    odom_topic: "odometry"
+    odom_topic: "/odin1/odometry"
     robot_base_frame: "gimbal_yaw"
     fake_robot_base_frame: "gimbal_yaw_fake"
     input_cmd_vel_topic: "cmd_vel_nav2_result"
@@ -173,7 +173,7 @@ small_gicp_relocalization:
     odom_frame: "odom"
     base_frame: "base_footprint"
     robot_base_frame: "gimbal_yaw"
-    lidar_frame: "front_mid360"
+    lidar_frame: "odin1_base_link"
     init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # [x, y, z, roll, pitch, yaw]
     # The prior_pcd_file does not need to be specified since it going to be set by defaults in launch.
     # prior_pcd_file: ""
@@ -274,7 +274,7 @@ bt_navigator:
     use_sim_time: False
     global_frame: map
     robot_base_frame: gimbal_yaw_fake
-    odom_topic: odometry
+    odom_topic: /odin1/odometry
     bt_loop_duration: 10
     default_server_timeout: 100
     wait_for_service_timeout: 1000
@@ -504,7 +504,7 @@ local_costmap:
           # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
           # It doesn't need to start with '/'
           topic: <robot_namespace>/terrain_map
-          sensor_frame: front_mid360
+          sensor_frame: odin1_base_link
           min_obstacle_height: 0.2
           max_obstacle_height: 2.0
           obstacle_max_range: 5.0
@@ -552,7 +552,7 @@ global_costmap:
           # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
           # It doesn't need to start with '/'
           topic: <robot_namespace>/terrain_map_ext
-          sensor_frame: front_mid360
+          sensor_frame: odin1_base_link
           min_obstacle_height: 0.2   # 提高最小障碍高度
           max_obstacle_height: 2.0   # 降低最大障碍高度
           obstacle_max_range: 5.0   # 缩短最大检测范围，减少远处噪声
@@ -662,7 +662,7 @@ velocity_smoother:    #速度平滑器
     min_velocity: [-3.0, -3.0, -2.0]    #最小X、Y、旋转 
     max_accel: [3.0, 3.0, 4.0]    #最大加速度XY旋转
     max_decel: [-3.0, -3.0, -3.0]    #最小加速度XY旋转
-    odom_topic: "odometry"
+    odom_topic: "/odin1/odometry"
     odom_duration: 0.1    # 里程计数据有效期0.1秒
     deadband_velocity: [0.0, 0.0, 0.0]    # 死区速度：无死区（立即响应）
     velocity_timeout: 1.0     # 速度指令超时时间1.0秒

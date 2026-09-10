@@ -124,6 +124,10 @@ def generate_launch_description():
         respawn_delay=2.0,
         arguments=["--ros-args", "--log-level", log_level],
         parameters=[configured_params],
+        remappings=[
+            ("lidar_odometry", "/odin1/odometry"),
+            ("registered_scan", "/odin1/cloud_slam_xyzi"),
+        ],
         prefix=['taskset -c 6-15'],
     )
 
@@ -136,35 +140,47 @@ def generate_launch_description():
         respawn_delay=2.0,
         arguments=["--ros-args", "--log-level", log_level],
         parameters=[configured_params],
+        remappings=[
+            ("lidar_odometry", "/odin1/odometry"),
+            ("registered_scan", "/odin1/cloud_slam_xyzi"),
+        ],
         prefix=['taskset -c 6-15'],
+    )
+
+    # Odin1 already provides the odometry and registered cloud.  This node
+    # keeps the existing chassis odometry/TF interface used by Nav2 and the
+    # velocity transform node, without routing the data through loam_interface.
+    start_sensor_scan_generation_cmd = Node(
+        package="sensor_scan_generation",
+        executable="sensor_scan_generation_node",
+        name="sensor_scan_generation",
+        output="screen",
+        respawn=use_respawn,
+        respawn_delay=2.0,
+        parameters=[configured_params],
+        remappings=[
+            ("lidar_odometry", "/odin1/odometry"),
+            ("registered_scan", "/odin1/cloud_slam_xyzi"),
+        ],
+        arguments=["--ros-args", "--log-level", log_level],
+        prefix=['taskset -c 6-15'],
+    )
+
+    # Keep the original RGB cloud and adapt a separate stream for consumers
+    # that require the legacy XYZ+intensity point type.
+    start_odin_cloud_adapter_cmd = Node(
+        package="odin_nav_tools",
+        executable="odin_cloud_to_xyzi",
+        name="odin_cloud_to_xyzi",
+        output="screen",
+        respawn=use_respawn,
+        respawn_delay=2.0,
     )
 
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(["not ", use_composition])),
         actions=[
             # 辅助节点 -> CPU 6-15
-            Node(
-                package="loam_interface",
-                executable="loam_interface_node",
-                name="loam_interface",
-                output="screen",
-                respawn=use_respawn,
-                respawn_delay=2.0,
-                parameters=[configured_params],
-                arguments=["--ros-args", "--log-level", log_level],
-                prefix=['taskset -c 6-15'],
-            ),
-            Node(
-                package="sensor_scan_generation",
-                executable="sensor_scan_generation_node",
-                name="sensor_scan_generation",
-                output="screen",
-                respawn=use_respawn,
-                respawn_delay=2.0,
-                parameters=[configured_params],
-                arguments=["--ros-args", "--log-level", log_level],
-                prefix=['taskset -c 6-15'],
-            ),
             Node(
                 package="fake_vel_transform",
                 executable="fake_vel_transform_node",
@@ -287,8 +303,6 @@ def generate_launch_description():
         target_container=container_name_full,
         composable_node_descriptions=[
             # 组合模式不支持 taskset，这里保持干净，避免报错
-            ComposableNode(package="loam_interface", plugin="loam_interface::LoamInterfaceNode", name="loam_interface", parameters=[configured_params]),
-            ComposableNode(package="sensor_scan_generation", plugin="sensor_scan_generation::SensorScanGenerationNode", name="sensor_scan_generation", parameters=[configured_params]),
             ComposableNode(package="fake_vel_transform", plugin="fake_vel_transform::FakeVelTransform", name="fake_vel_transform", parameters=[configured_params]),
             ComposableNode(package="nav2_controller", plugin="nav2_controller::ControllerServer", name="controller_server", parameters=[configured_params], remappings=[("cmd_vel", "cmd_vel_controller")]),
             ComposableNode(package="nav2_smoother", plugin="nav2_smoother::SmootherServer", name="smoother_server", parameters=[configured_params]),
@@ -314,6 +328,8 @@ def generate_launch_description():
     ld.add_action(declare_log_level_cmd)
     ld.add_action(start_terrain_analysis_cmd)
     ld.add_action(start_terrain_analysis_ext_cmd)
+    ld.add_action(start_sensor_scan_generation_cmd)
+    ld.add_action(start_odin_cloud_adapter_cmd)
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 

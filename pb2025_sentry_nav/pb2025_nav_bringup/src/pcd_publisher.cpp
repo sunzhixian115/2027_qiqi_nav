@@ -16,9 +16,13 @@ public:
     {
         publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
             "pcd_cloud", 10);
-        
-        // 定义要发布的PCD文件路径
-        std::string pcd_file = "/home/y/nav/blue/src/pb2025_sentry_nav/pb2025_nav_bringup/pcd/reality/2222.pcd";
+
+        this->declare_parameter<std::string>("pcd_file", "");
+        const std::string pcd_file = this->get_parameter("pcd_file").as_string();
+        if (pcd_file.empty()) {
+            RCLCPP_ERROR(this->get_logger(), "Set the pcd_file parameter before starting pcd_publisher");
+            return;
+        }
         
         // 加载PCD文件
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(pcd_file, *cloud_) == -1) {
