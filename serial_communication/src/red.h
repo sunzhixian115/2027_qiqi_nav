@@ -29,8 +29,6 @@
 #include <tf2_ros/transform_listener.h>
 
 #include "base_interfaces_demo/msg/target.hpp"
-#include "rmoss_interfaces/msg/robot_status.hpp"
-#include "rmoss_interfaces/msg/game_status.hpp"
 #include "crc16.h"
 
 using namespace std::chrono_literals;
@@ -82,10 +80,6 @@ struct SerialOutFrame
 
   uint8_t attack_target;
 
-
-  float obstacle_x;  // 给雷达站传的
-  float obstacle_y; 
-
   uint8_t if_arrive_base_point;//0表示还没到，1表示到了
 
   uint16_t crc;
@@ -94,7 +88,7 @@ struct SerialOutFrame
 #pragma pack(pop)
 
 static_assert(
-  sizeof(SerialOutFrame) == 36,
+  sizeof(SerialOutFrame) == 28,
   "SerialOutFrame size error");
 
 // ============================================================
@@ -120,59 +114,7 @@ struct SerialInFrame
 
   uint16_t bullet;
 
-  bool rune_mode;//是否在符文模式
-
   uint16_t attack_mession;//1英雄 2工程 34步兵 10前哨 11基地 
-
-  float my_hero_x;//咱英雄
-  float my_hero_y;
-  int my_hero_hp;
-
-  float my_engineer_x;//咱工程
-  float my_engineer_y;
-  int my_engineer_hp;
-
-  float my_infantry3_x;//咱步兵
-  float my_infantry3_y;
-  int my_infantry3_hp;
-
-  float my_infantry4_x;//同上
-  float my_infantry4_y;
-  int my_infantry4_hp;
-
-  float enemy_hero_x;//敌人英雄
-  float enemy_hero_y;
-  int enemy_hero_hp;
-
-  float enemy_engineer_x;//敌人工程
-  float enemy_engineer_y;
-  int enemy_engineer_hp;
-
-  float enemy_infantry3_x;//敌人步兵
-  float enemy_infantry3_y;
-  int enemy_infantry3_hp;
-
-  float enemy_infantry4_x;//敌人步兵
-  float enemy_infantry4_y;
-  int enemy_infantry4_hp;
-
-  
-
-  float enemy_sentry_x;//敌人哨兵
-  float enemy_sentry_y;
-  int enemy_sentry_hp;
-
-  bool base_exposed;//基地是否被暴露
-  bool energy_activated;//能量机关是否被激活
-
-  int outpost_hp;//前哨站血量
-  int base_hp;//基地血量
-
-
-
-  uint8_t if_fly;//是否在飞行状态  0是没起飞 1是起飞了
-  uint8_t gimble_status;//云台手状态 默认为0 0是前哨没死 1是前哨死翘翘了，我解放了可以乱跑了 2是回到基地点猥琐的扫描 3是绕基地遛弯 
-
 
   uint16_t crc;
 };
@@ -180,9 +122,7 @@ struct SerialInFrame
 #pragma pack(pop)
 
 // static_assert 暂时注释: 结构体已扩展，帧长度待电控确认
-static_assert(
-  sizeof(SerialInFrame) == 143,
-  "SerialInFrame size error");
+static_assert(sizeof(SerialInFrame) == 22, "SerialInFrame size error");
 
 // ============================================================
 // 串口接收类
@@ -216,61 +156,10 @@ public:
 
   float enemy_yaw_ = 0.0f;
 
-  bool rune_mode_ = false;
-
   uint16_t attack_mession_ = 0;
 
   uint8_t if_arrive_base_point_;//0表示还没到，1表示到了
 
-
-  // 己方机器人
-  float my_hero_x_ = -1.0f;
-  float my_hero_y_ = -1.0f;
-  int my_hero_hp_ = -1;
-
-  float my_engineer_x_ = -1.0f;
-  float my_engineer_y_ = -1.0f;
-  int my_engineer_hp_ = -1;
-
-  float my_infantry3_x_ = -1.0f;
-  float my_infantry3_y_ = -1.0f;
-  int my_infantry3_hp_ = -1;
-
-  float my_infantry4_x_ = -1.0f;
-  float my_infantry4_y_ = -1.0f;
-  int my_infantry4_hp_ = -1;
-
-  // 敌方机器人
-  float enemy_hero_x_ = -1.0f;
-  float enemy_hero_y_ = -1.0f;
-  int enemy_hero_hp_ = -1;
-
-  float enemy_engineer_x_ = -1.0f;
-  float enemy_engineer_y_ = -1.0f;
-  int enemy_engineer_hp_ = -1;
-
-  float enemy_infantry3_x_ = -1.0f;
-  float enemy_infantry3_y_ = -1.0f;
-  int enemy_infantry3_hp_ = -1;
-
-  float enemy_infantry4_x_ = -1.0f;
-  float enemy_infantry4_y_ = -1.0f;
-  int enemy_infantry4_hp_ = -1;
-
-  float enemy_sentry_x_ = -1.0f;
-  float enemy_sentry_y_ = -1.0f;
-  int enemy_sentry_hp_ = -1;
-
-  // 场地状态
-  bool base_exposed_ = false;
-  bool energy_activated_ = false;
-
-  int outpost_hp_ = -1;
-  int base_hp_ = -1;
-
-  // 云台坐标
-  uint8_t if_fly_ = 0;//飞机没飞
-  uint8_t gimble_status_ = 0;//前哨没死翘翘 1是死翘翘
 
 private:
 
@@ -314,24 +203,7 @@ private:
   void chasePointCallback(
     const geometry_msgs::msg::Point::SharedPtr msg);
 
-  void relYawDistCallback(
-    const std_msgs::msg::Float32MultiArray::SharedPtr msg);
 
-  // RL动作回调
-  void rlCmdVelCallback(
-    const geometry_msgs::msg::Twist::SharedPtr msg);
-
-  void rlShootCallback(
-    const std_msgs::msg::UInt16::SharedPtr msg);
-
-  void rlReviveCallback(
-    const std_msgs::msg::Bool::SharedPtr msg);
-
-  void rlRemoteAmmoCallback(
-    const std_msgs::msg::Bool::SharedPtr msg);
-
-  void rlLocalAmmoCallback(
-    const std_msgs::msg::Bool::SharedPtr msg);
 
   // ==========================================================
   // 主循环
@@ -371,8 +243,6 @@ private:
 
 
 
-  void publishObservation();
-  void publishRefereeStatus();
 
   // ==========================================================
   // 辅助函数
@@ -396,11 +266,8 @@ private:
   int getRegion(
     const geometry_msgs::msg::Point & p);
 
+  // 保留内部兼容接口，当前不参与任何 RL 或发布链路。
   geometry_msgs::msg::Point predictPoint();
-
-  geometry_msgs::msg::Point findRadarTarget(int my_zone);
-
-  float get_enemy_yaw( const float gimble_yaw_,const geometry_msgs::msg::Point robot_pos_,const geometry_msgs::msg::Point enemy_pos_ );  // 计算敌人与雷达朝向之间的夹角
 
 
   // ==========================================================
@@ -446,24 +313,6 @@ private:
   rclcpp::Publisher<
     geometry_msgs::msg::PoseStamped>::SharedPtr goal_pub_;
 
-  rclcpp::Publisher<
-    std_msgs::msg::Float32MultiArray>::SharedPtr obs_pub_;
-
-  // referee_system 话题 (供 RL 推理节点)
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_self_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_hero_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_engineer_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_infantry3_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_infantry4_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_enemy_hero_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_enemy_engineer_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_enemy_infantry3_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_enemy_infantry4_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_enemy_sentry_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_outpost_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_base_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::RobotStatus>::SharedPtr ref_energy_pub_;
-  rclcpp::Publisher<rmoss_interfaces::msg::GameStatus>::SharedPtr ref_game_pub_;
 
   // ==========================================================
   // subscriber
@@ -478,25 +327,7 @@ private:
   rclcpp::Subscription<
     std_msgs::msg::Float64>::SharedPtr gimble_yaw_sub_;
 
-  // 雷达障碍物(dist, yaw)
-  rclcpp::Subscription<
-    std_msgs::msg::Float32MultiArray>::SharedPtr rel_yaw_dist_sub_;
 
-  // RL动作订阅
-  rclcpp::Subscription<
-    geometry_msgs::msg::Twist>::SharedPtr rl_cmd_vel_sub_;
-
-  rclcpp::Subscription<
-    std_msgs::msg::UInt16>::SharedPtr rl_shoot_sub_;
-
-  rclcpp::Subscription<
-    std_msgs::msg::Bool>::SharedPtr rl_revive_sub_;
-
-  rclcpp::Subscription<
-    std_msgs::msg::Bool>::SharedPtr rl_remote_ammo_sub_;
-
-  rclcpp::Subscription<
-    std_msgs::msg::Bool>::SharedPtr rl_local_ammo_sub_;
 
   // ==========================================================
   // tf
@@ -517,7 +348,6 @@ private:
 
   std::string base_frame_;
 
-  std::string lidar_frame_;
 
   // ==========================================================
   // 状态
@@ -533,14 +363,6 @@ private:
 
   bool if_turn_ = false;
 
-  // 雷达点状态
-  bool radar_active_ = false;
-  bool radar_arrived_ = false;  // 是否已到达雷达点并开始计时
-  rclcpp::Time radar_arrive_time_;
-
-  // 缓存点
-  geometry_msgs::msg::Point radar_saved_point_;
-
   Stage stage_ = Stage::IDLE;
 
   DecisionMode decision_mode_ = DecisionMode::BASE_MODE;
@@ -554,7 +376,6 @@ private:
   float my_hp_ = 400.0f;
   uint16_t second_ = 420;
   uint16_t bullet_ = 300;
-  bool rune_mode_ = false;
   uint16_t attack_mession_ = 0;
   
 
@@ -577,11 +398,6 @@ private:
   geometry_msgs::msg::Twist current_twist_;
 
   float gimble_yaw_ = 0.0f;
-
-  // 雷达障碍物(雷达坐标系)
-  float obs_dist_ = 0.0f;
-  float obs_yaw_ = 0.0f;
-  bool has_obs_ = false;
 
   float target_distance_ = 0.0f;
   float enemy_yaw_angle_ = 0.0f;  // 车头到敌人的夹角(弧度)
@@ -642,102 +458,6 @@ private:
 
   double arrive_tolerance_ = 0.5;
 
-  // ========================================================
-  // RL观察空间: 固定目标坐标 (config)
-  // ========================================================
-
-  double outpost_x_ = 11.0;
-  double outpost_y_ = 11.35;
-  double base_x_ = 2.4;
-  double base_y_ = 7.5;
-  double energy_x_ = 14.0;
-  double energy_y_ = 7.5;
-
-  // ========================================================
-  // 地图偏移 (地图yaml origin 取反)
-  // 读进来(真实→SLAM): xy -= origin_
-  // 发出去(SLAM→真实): xy += origin_
-  // ========================================================
-
-  double origin_x_ = -3.8;
-  double origin_y_ = -7.5;
-
-  // ========================================================
-  // RL观察空间: 全局状态 (成员变量)
-  // ========================================================
-
-  int team_economy_ = 400;
-  int revive_count_ = -1;
-  int revive_cost_ = -1;
-
-  // ========================================================
-  // RL观察空间: 10个机器人状态 (成员变量)
-  // xy默认-1, zone默认-1, hp默认-1
-  // ========================================================
-
-  // 自身 (xy从robot_pos_取, hp从串口取, ammo从串口取)
-  int own_zone_ = -1;
-
-  // 己方英雄
-  float my_hero_x_ = -1.0f;
-  float my_hero_y_ = -1.0f;
-  int my_hero_hp_ = -1;
-  int my_hero_zone_ = -1;
-
-  // 己方工程
-  float my_engineer_x_ = -1.0f;
-  float my_engineer_y_ = -1.0f;
-  int my_engineer_hp_ = -1;
-  int my_engineer_zone_ = -1;
-
-  // 己方步兵3
-  float my_infantry_3_x_ = -1.0f;
-  float my_infantry_3_y_ = -1.0f;
-  int my_infantry_3_hp_ = -1;
-  int my_infantry_3_zone_ = -1;
-
-  // 己方步兵4
-  float my_infantry_4_x_ = -1.0f;
-  float my_infantry_4_y_ = -1.0f;
-  int my_infantry_4_hp_ = -1;
-  int my_infantry_4_zone_ = -1;
-
-  // 敌方英雄
-  float enemy_hero_x_ = -1.0f;
-  float enemy_hero_y_ = -1.0f;
-  int enemy_hero_hp_ = -1;
-  int enemy_hero_zone_ = -1;
-
-  // 敌方工程
-  float enemy_engineer_x_ = -1.0f;
-  float enemy_engineer_y_ = -1.0f;
-  int enemy_engineer_hp_ = -1;
-  int enemy_engineer_zone_ = -1;
-
-  // 敌方步兵3
-  float enemy_infantry_3_x_ = -1.0f;
-  float enemy_infantry_3_y_ = -1.0f;
-  int enemy_infantry_3_hp_ = -1;
-  int enemy_infantry_3_zone_ = -1;
-
-  // 敌方步兵4
-  float enemy_infantry_4_x_ = -1.0f;
-  float enemy_infantry_4_y_ = -1.0f;
-  int enemy_infantry_4_hp_ = -1;
-  int enemy_infantry_4_zone_ = -1;
-
-  // 敌方哨兵
-  float enemy_sentry_x_ = -1.0f;
-  float enemy_sentry_y_ = -1.0f;
-  int enemy_sentry_hp_ = -1;
-  int enemy_sentry_zone_ = -1;
-
-  // 前哨站/基地/能量机关状态
-  int outpost_hp_ = -1;
-  int base_hp_ = -1;
-  bool outpost_stopped_ = false;
-  bool base_exposed_ = false;
-  bool energy_activated_ = false;
 };
 
 #endif // RED_H

@@ -3,16 +3,22 @@
 
 ./szx.sh
 
+#nmsl
 
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 导航栈
+
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 source install/setup.bash
-ros2 launch pb2025_nav_bringup rm_navigation_reality_launch.py world:=07154 slam:=False use_robot_state_pub:=True
+ros2 launch pb2025_nav_bringup rm_navigation_reality_launch.py world:=09151 slam:=False use_robot_state_pub:=True
 
 
 
 串口包
 
+
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 source install/setup.bash
 ros2 launch serial_communication red.launch.py
 

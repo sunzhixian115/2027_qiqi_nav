@@ -14,7 +14,6 @@ find_package(rclcpp_action REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(base_interfaces_demo REQUIRED)
-find_package(rmoss_interfaces REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -35,9 +34,7 @@ add_executable(red
   src/red_04_main_loop.cpp
   src/red_05_battle_info.cpp
   src/red_06_decision.cpp
-  src/red_07_obs_referee.cpp
   src/red_08_utils.cpp
-  src/red_09_patrol.cpp
 )
 add_executable(region_monitor src/region_monitor.cpp)
 
@@ -55,7 +52,7 @@ set(COMMON_DEPS
 )
 
 ament_target_dependencies(nav_goal_guard ${COMMON_DEPS})
-ament_target_dependencies(red ${COMMON_DEPS} rmoss_interfaces)
+ament_target_dependencies(red ${COMMON_DEPS})
 ament_target_dependencies(region_monitor
   rclcpp
   geometry_msgs
@@ -76,11 +73,6 @@ install(DIRECTORY
   launch
   config
   DESTINATION share/${PROJECT_NAME}
-)
-
-install(PROGRAMS
-  test/test_publish_goal.py
-  DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

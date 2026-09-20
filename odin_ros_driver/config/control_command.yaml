@@ -144,7 +144,7 @@ register_keys:
   # 重定位地图的绝对路径
   # 重定位模式下必须设置，否则会失败
   # Relative to the installed odin_ros_driver package share directory.
-  relocalization_map_abs_path: "map/20260906_182416/map_20260906_182857.bin"
+  relocalization_map_abs_path: "/home/y/nav/o1_0912/src/odin_ros_driver/map/20260915_185459/map_20260915_185612.bin"
 
   # 获取建图结果文件：
   # 使用提供的 set_param.sh 脚本：

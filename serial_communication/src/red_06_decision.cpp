@@ -5,7 +5,6 @@ void RefereeSystemNode::decisionTick()
   //   // 电控说开始我在开始
   //   if(serial_receiver_.start_flag_ != 4)
   //   {
-  //     serial_receiver_.gimble_status_=0;
   //     return;
   //   }
 
@@ -22,11 +21,10 @@ void RefereeSystemNode::decisionTick()
   //     get_logger(),
   //     *get_clock(),
   //     5000,//5秒输出一次
-  //     "[决策] 区域=%d | HP=%.0f 弹药=%d | 追击=%s | 雷达点=(%.1f,%.1f) | 位置=(%.1f,%.1f)",
+  //     "[决策] 区域=%d | HP=%.0f 弹药=%d | 追击=%s | 位置=(%.1f,%.1f)",
   //     current_region,
   //     serial_receiver_.my_hp_, serial_receiver_.bullet_,
   //     chase_locked_ ? "是" : "否",
-  //     radar_saved_point_.x, radar_saved_point_.y,
   //     robot_pos_.x, robot_pos_.y);
     
 
@@ -61,106 +59,11 @@ void RefereeSystemNode::decisionTick()
   //     }
 
   //     // ========================================================
-  //     // 云台手给我的标记 默认0巡航 1是前哨站爆了 2是猥琐 3是绕基地
-  //     // ========================================================
-
-  //     //云台手不给插点，直接跳过不处理
-  //     if(serial_receiver_.gimble_status_==1)//如果给了1,那我就跑的进攻性一点
-  //     {
-  //       if(chase_locked_)//进攻性的跑，优先追击
-  //       {
-  //         if(
-  //           getRegion(chase_point_) ==
-  //           current_region)
-  //         {
-  //           current_target_point_ =
-  //             chase_point_;
-  //           RCLCPP_INFO(get_logger(), "追击ing");
-  //           if(getDistance(chase_point_,robot_pos_)<1.5)
-  //           {
-  //             RCLCPP_INFO(get_logger(), "到达追击点");
-  //             return;
-  //           }
-  //           publishGoal(chase_point_);
-  //           return;
-  //         }
-  //         // 不同区域 → 不追，继续往下判断
-  //       }
-
-  //       no_out_poset_Cruise();//没有追击目标，就巡航
-
-  //       return;
-  //     }
-
-
-  //     else if(serial_receiver_.gimble_status_==2)//如果给了2,我就猥琐的扫描
-  //     {
-  //       publishGoal(base_point_);
-  //       if(getDistance(base_point_,robot_pos_)<0.5)
-  //       {
-  //         RCLCPP_INFO(get_logger(), "到达基地点");
-  //         if_arrive_base_point_=1;
-  //         return;
-  //       }
-  //       return;
-  //     }
-
-
-  //     else if(serial_receiver_.gimble_status_==3)//如果给了3,那我就绕基地点
-  //     {
-  //       //绕基地跑，优先追击
-  //       if(chase_locked_)
-  //       {
-  //         if(
-  //           getRegion(chase_point_) ==
-  //           current_region)
-  //         {
-  //           current_target_point_ =
-  //             chase_point_;
-  //           RCLCPP_INFO(get_logger(), "追击ing");
-  //           if(getDistance(chase_point_,robot_pos_)<2.5)
-  //           {
-  //             RCLCPP_INFO(get_logger(), "到达追击点");
-  //             return;
-  //           }
-  //           publishGoal(chase_point_);
-  //           return;
-  //         }
-  //         // 不同区域 → 不追，继续往下判断
-  //       }
-
-  //       baseCruise();
-  //       return;
-  //     }
-
-
-
-
-  //     // ========================================================
   //     // 锁定前哨站
   //     // ========================================================
   //     if(serial_receiver_.attack_mession_==10)//如果索到前哨就不动了
   //     {
   //       return;
-  //     }
-
-
-  //     // ========================================================
-  //     // 飞机是否起飞
-  //     // ========================================================
-
-  //     if(if_fly_==1)//起飞了
-  //     {
-  //       //到基地点猥琐的扫描
-  //       publishGoal(base_point_);
-  //       if(getDistance(base_point_,robot_pos_)<0.5)
-  //       {
-  //         RCLCPP_INFO(get_logger(), "到达基地点");
-  //         if_arrive_base_point_=1;
-  //         return;
-  //       }
-  //       return;
-
   //     }
 
 
@@ -185,37 +88,6 @@ void RefereeSystemNode::decisionTick()
   //       }
   //       // 不同区域 → 不追，继续往下判断
   //     }
-
-
-
-  //     // ========================================================
-  //     // 雷达点巡逻 (数据已在 updateBattleInfo 中缓存)
-  //     // ========================================================
-
-  //     if (radar_active_)// 雷达点有效才导航
-  //     {
-  //       publishGoal(radar_saved_point_);// 导航到雷达点
-
-  //       if(getDistance(radar_saved_point_, robot_pos_) < arrive_tolerance_)// 如果到了
-  //       {
-  //         if(!radar_arrived_)// 刚到达
-  //         {
-  //           radar_arrive_time_ = this->now();
-  //           radar_arrived_ = true;//标记刚到
-  //           RCLCPP_INFO(get_logger(), "已到达雷达点，开始计时");
-  //         }
-  //         else if(this->now() - radar_arrive_time_ >= rclcpp::Duration(10s))
-  //         {
-  //           RCLCPP_INFO(get_logger(), "雷达点10秒结束");
-  //           radar_arrived_ = false;
-  //           radar_saved_point_.x = -1.0f;
-  //           radar_saved_point_.y = -1.0f;
-  //           radar_active_ = false;
-  //         }
-  //       }
-  //       return;
-  //     }
-
 
 
   //     // ========================================================
@@ -276,37 +148,6 @@ void RefereeSystemNode::decisionTick()
   //         return;
   //       }
   //       // 不同区域 → 不追，继续往下判断
-  //     }
-
-
-
-  //     // ========================================================
-  //     // 第三 雷达点巡逻
-  //     // ========================================================
-
-  //     // 找同区域最近敌人，有效时保存到缓存
-  //     if (radar_active_)// 雷达点有效才导航
-  //     {
-  //       publishGoal(radar_saved_point_);// 导航到雷达点
-
-  //       if(getDistance(radar_saved_point_, robot_pos_) < arrive_tolerance_)// 如果到了
-  //       {
-  //         if(!radar_arrived_)// 刚到达
-  //         {
-  //           radar_arrive_time_ = this->now();
-  //           radar_arrived_ = true;//标记刚到
-  //           RCLCPP_INFO(get_logger(), "已到达雷达点，开始计时");
-  //         }
-  //         else if(this->now() - radar_arrive_time_ >= rclcpp::Duration(10s))
-  //         {
-  //           RCLCPP_INFO(get_logger(), "雷达点10秒结束");
-  //           radar_arrived_ = false;
-  //           radar_saved_point_.x = -1.0f;
-  //           radar_saved_point_.y = -1.0f;
-  //           radar_active_ = false;
-  //         }
-  //       }
-  //       return;
   //     }
 
 
@@ -538,9 +379,6 @@ void RefereeSystemNode::go_to_base()//返回基地
       break;
   }
 }
-
-
-
 
 
 

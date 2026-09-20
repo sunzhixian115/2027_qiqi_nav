@@ -10,14 +10,14 @@ def generate_launch_description():
     serial_dir = get_package_share_directory('serial_communication')
     red_points_file = os.path.join(serial_dir, 'config', 'red_points.yaml')
 
-    # 雷达检测 (含 lidar driver + pc_detector + rel_yaw_dist)
-    radar_bringup_dir = get_package_share_directory('radar_bringup')
-    radar_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(radar_bringup_dir, 'launch', 'mid360_detect.launch.py')
-        ),
-        launch_arguments={'use_rviz': 'false'}.items()
-    )
+    # 雷达检测已禁用：当前工作空间没有 radar_bringup 包。
+    # radar_bringup_dir = get_package_share_directory('radar_bringup')
+    # radar_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(radar_bringup_dir, 'launch', 'mid360_detect.launch.py')
+    #     ),
+    #     launch_arguments={'use_rviz': 'false'}.items()
+    # )
 
     # 优先使用workspace的libserial.so，避免与系统libserial-dev冲突
     serial_lib_dir = os.path.join(
@@ -26,7 +26,6 @@ def generate_launch_description():
 
     nodes = [
         SetEnvironmentVariable('LD_LIBRARY_PATH', serial_lib_dir + ':' + os.environ.get('LD_LIBRARY_PATH', '')),
-        radar_launch,
         Node(
             package='serial_communication',
             executable='red',
