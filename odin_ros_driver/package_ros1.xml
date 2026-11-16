@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>odin_ros_driver</name>
-  <version>0.0.1</version>
+  <version>0.14.4</version>
   <description>ROS driver for Odin sensor</description>
   <maintainer email="oliveiratang@manifoldtech.cn">rlk</maintainer>
   <license>Apache 2.0</license>
@@ -16,7 +16,11 @@
   <depend>nav_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
-  
+
+  <!-- AE/AWB debug services (custom .srv files in srv/) -->
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
   <!-- System dependencies -->
   <depend>eigen</depend>
   <depend>opencv</depend>

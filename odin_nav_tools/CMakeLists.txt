@@ -23,7 +23,7 @@ add_executable(odin_synthetic_source src/odin_synthetic_source.cpp)
 ament_target_dependencies(odin_synthetic_source rclcpp sensor_msgs nav_msgs)
 
 add_executable(odin_cloud_to_xyzi src/odin_cloud_to_xyzi.cpp)
-ament_target_dependencies(odin_cloud_to_xyzi rclcpp sensor_msgs)
+ament_target_dependencies(odin_cloud_to_xyzi rclcpp sensor_msgs nav_msgs)
 
 install(TARGETS odin_cloud_compatibility_test odin_synthetic_source odin_cloud_to_xyzi DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS scripts/odin_static_tf.py DESTINATION lib/${PROJECT_NAME})

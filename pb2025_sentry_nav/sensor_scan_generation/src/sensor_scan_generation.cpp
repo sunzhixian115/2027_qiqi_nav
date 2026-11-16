@@ -63,14 +63,27 @@ void SensorScanGenerationNode::laserCloudAndOdometryHandler(
   const nav_msgs::msg::Odometry::ConstSharedPtr & odometry_msg,
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pcd_msg)
 {
+  if (odometry_msg->child_frame_id != lidar_frame_ ||
+    odometry_msg->header.frame_id != pcd_msg->header.frame_id)
+  {
+    RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000,
+      "里程计与点云坐标系不匹配，跳过本帧");
+    return;
+  }
   tf2::Transform tf_lidar_to_chassis;
   tf2::Transform tf_odom_to_chassis;
   tf2::Transform tf_odom_to_robot_base;
   tf2::Transform tf_odom_to_lidar;
 
   tf2::fromMsg(odometry_msg->pose.pose, tf_odom_to_lidar);
-  tf_lidar_to_robot_base_ = getTransform(lidar_frame_, robot_base_frame_, pcd_msg->header.stamp);
-  tf_lidar_to_chassis = getTransform(lidar_frame_, base_frame_, pcd_msg->header.stamp);
+  try {
+    tf_lidar_to_robot_base_ = getTransform(lidar_frame_, robot_base_frame_, pcd_msg->header.stamp);
+    tf_lidar_to_chassis = getTransform(lidar_frame_, base_frame_, pcd_msg->header.stamp);
+  } catch (const tf2::TransformException & ex) {
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+      "安装 TF 尚不可用，跳过本帧：%s", ex.what());
+    return;
+  }
 
   tf_odom_to_chassis = tf_odom_to_lidar * tf_lidar_to_chassis;
   tf_odom_to_robot_base = tf_odom_to_lidar * tf_lidar_to_robot_base_;
@@ -88,16 +101,12 @@ void SensorScanGenerationNode::laserCloudAndOdometryHandler(
 tf2::Transform SensorScanGenerationNode::getTransform(
   const std::string & target_frame, const std::string & source_frame, const rclcpp::Time & time)
 {
-  try {
-    auto transform_stamped = tf_buffer_->lookupTransform(
-      target_frame, source_frame, time, rclcpp::Duration::from_seconds(0.5));
-    tf2::Transform transform;
-    tf2::fromMsg(transform_stamped.transform, transform);
-    return transform;
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN(this->get_logger(), "TF lookup failed: %s. Returning identity.", ex.what());
-    return tf2::Transform::getIdentity();
-  }
+  // 云台关节 TF 可能比点云晚几毫秒到达；监听器使用独立线程，可等待插值所需的下一帧。
+  auto transform_stamped = tf_buffer_->lookupTransform(
+    target_frame, source_frame, time, rclcpp::Duration::from_seconds(0.2));
+  tf2::Transform transform;
+  tf2::fromMsg(transform_stamped.transform, transform);
+  return transform;
 }
 
 void SensorScanGenerationNode::publishTransform(
@@ -127,20 +136,20 @@ void SensorScanGenerationNode::publishOdometry(
   out.pose.pose.position.z = origin.z();
   out.pose.pose.orientation = tf2::toMsg(transform.getRotation());
 
-  static tf2::Transform previous_transform;
-  static auto previous_time = std::chrono::steady_clock::now();
-  const auto current_time = std::chrono::steady_clock::now();
+  const auto current_time = stamp;
+  const double dt = have_previous_odometry_ ? (current_time - previous_odometry_time_).seconds() : 0.0;
 
-  const double dt =
-    std::chrono::duration_cast<std::chrono::nanoseconds>(current_time - previous_time).count() *
-    1e-9;
+  if (dt > 0 && dt < 1.0) {
+    const auto to_child = transform.getBasis().transpose();
+    const auto linear_velocity =
+      to_child * ((transform.getOrigin() - previous_odometry_transform_.getOrigin()) / dt);
 
-  if (dt > 0) {
-    const auto linear_velocity = (transform.getOrigin() - previous_transform.getOrigin()) / dt;
-
-    const tf2::Quaternion q_diff =
-      transform.getRotation() * previous_transform.getRotation().inverse();
-    const auto angular_velocity = q_diff.getAxis() * q_diff.getAngle() / dt;
+    tf2::Quaternion q_diff =
+      transform.getRotation() * previous_odometry_transform_.getRotation().inverse();
+    if (q_diff.w() < 0) {
+      q_diff = tf2::Quaternion(-q_diff.x(), -q_diff.y(), -q_diff.z(), -q_diff.w());
+    }
+    const auto angular_velocity = to_child * (q_diff.getAxis() * q_diff.getAngle() / dt);
 
     out.twist.twist.linear.x = linear_velocity.x();
     out.twist.twist.linear.y = linear_velocity.y();
@@ -150,8 +159,9 @@ void SensorScanGenerationNode::publishOdometry(
     out.twist.twist.angular.z = angular_velocity.z();
   }
 
-  previous_transform = transform;
-  previous_time = current_time;
+  previous_odometry_transform_ = transform;
+  previous_odometry_time_ = current_time;
+  have_previous_odometry_ = true;
 
   pub_chassis_odometry_->publish(out);
 }

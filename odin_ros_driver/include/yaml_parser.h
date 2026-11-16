@@ -85,9 +85,64 @@ private:
     std::string config_file_;
     std::map<std::string, int> register_keys_;
     std::map<std::string, std::string> register_keys_str_val_;
+    std::map<std::string, double> register_keys_float_val_;
     std::map<std::string, ParameterValue> custom_parameters_;
 
-    std::unordered_set<std::string> allowed_key_w_str_val = {"relocalization_map_abs_path", "mapping_result_dest_dir", "mapping_result_file_name", "image_mask_abs_path"};
+    // Keys whose YAML value is a string (not int).
+    std::unordered_set<std::string> allowed_key_w_str_val = {
+        "relocalization_map_abs_path",
+        "mapping_result_dest_dir",
+        "mapping_result_file_name",
+        "image_mask_abs_path",
+        "overlay_reprojected_topic",
+        "overlay_camera_topic",
+        "overlay_output_topic"
+    };
+
+    // Keys whose YAML value is a floating-point number (not int).
+    std::unordered_set<std::string> allowed_key_w_float_val = {
+        "overlay_alpha"
+    };
+
+    // Whitelist of all recognized integer-valued keys.
+    // Any key not in this set (and not custom_*, string, or float) will trigger an error.
+    std::unordered_set<std::string> allowed_key_w_int_val = {
+        "streamctrl",
+        "sendrgbcompressed",
+        "sendrgb",
+        "sendrgbundistort",
+        "sendimu",
+        "enable_imu_smooth",
+        "imu_smooth_frequency",
+        "sendodom",
+        "send_odom_baselink_tf",
+        "navigation_compatibility",
+        "tf_extra_publish_rate",
+        "senddtof",
+        "cloud_raw_confidence_threshold",
+        "dtof_fps",
+        "rgb_format",
+        "rgb_width",
+        "rgb_height",
+        "rgb_fps",
+        "sendcloudslam",
+        "sendcloudrender",
+        "senddepth",
+        "sendreprojection",
+        "sendoverlay",
+        "recorddata",
+        "devstatuslog",
+        "save_log",
+        "pubintensitygray",
+        "showpath",
+        "showcamerapose",
+        "strict_usb3.0_check",
+        "use_host_ros_time",
+        "showfps",
+        "log_devel",
+        "sendimagemask",
+        "resetalgo"
+    };
 };
 
 }

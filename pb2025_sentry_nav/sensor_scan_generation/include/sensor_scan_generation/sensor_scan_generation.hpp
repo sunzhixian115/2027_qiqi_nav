@@ -71,6 +71,10 @@ private:
   std::unique_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
   tf2::Transform tf_lidar_to_robot_base_;
+  // 每个节点实例独立保存历史，避免组合加载多个节点时共享速度状态。
+  tf2::Transform previous_odometry_transform_;
+  rclcpp::Time previous_odometry_time_{0, 0, RCL_ROS_TIME};
+  bool have_previous_odometry_ = false;
 };
 
 }  // namespace sensor_scan_generation

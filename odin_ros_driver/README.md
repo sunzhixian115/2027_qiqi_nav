@@ -1,182 +1,140 @@
-# Odin_ROS_Driver README
+> 本包为 odin_0915 集成的 Odin1 0.14.4 驱动：在驱动内部兼容旧导航位姿接口，保留 map→odom 的求逆修正。
+> 详细启动方式、坐标系和旧地图验证限制见 [导航接入说明](docs/导航接入说明.md)。
+> 当前默认配置关闭厂商机体 TF；厂商 demo 中建议开启该 TF 的说明不适用于本导航配置。
+
+# Odin_ROS_Driver 使用说明
 
 Odin 传感器模块（Manifold Tech Ltd.）的 ROS 驱动套件。
 
-Odin1 Wiki：
+[Odin1 官方 Wiki](https://manifoldtechltd.github.io/wiki/Odin1/Cover.html)
 
-https://manifoldtechltd.github.io/wiki/Odin1/Cover.html
+## 兼容性
 
-## Odin_ROS_Driver
+- ROS 1：推荐使用长期支持版本 Noetic。
+- ROS 2：推荐使用长期支持版本 Humble。
 
-### 兼容性
+## 重要说明
 
-* ROS 1（推荐使用 LTS 版本：Noetic）
-* ROS 2（推荐使用 LTS 版本：Humble）
+本驱动包提供点云 SLAM 应用的核心功能，面向特定使用场景，供进行二次开发的专业技术人员使用。实际部署时，用户需要根据应用场景进行优化和定制开发，以满足运行要求。
 
-## 重要提示
+## 1. 版本
 
-本驱动包为点云 SLAM 应用提供核心功能，并针对特定使用场景设计。它仅面向进行二次开发的专业技术人员。
+当前驱动版本：**v0.14.4**。
 
-最终用户在实际部署环境中，必须根据具体应用场景进行针对性的优化和自定义开发，以满足实际运行需求。
+要求的设备固件版本：**v0.14.0**。
 
----
+## 2. 环境准备
 
-# 1. 版本
+### 2.1 操作系统要求
 
-当前版本：
+- Ubuntu 20.04：适用于 ROS Noetic 和 ROS 2 Foxy。
+- Ubuntu 22.04：适用于 ROS 2 Humble。
+- Ubuntu 18.04：目前不支持。
+- Ubuntu 24.04：官方暂不支持，经过部分修改后可能可以运行。
 
-```text
-v0.11.0
-```
+### 2.2 依赖项
 
-要求的设备固件版本：
+- OpenCV ≥ 4.2.0，推荐 4.5.5 或 4.8.0。请确保驱动和 ROS 使用一致的 OpenCV 版本，避免多个版本混用。
+- yaml-cpp。
+- 线程库。
+- OpenSSL。
+- Eigen3。
 
-```text
-v0.11.11
-```
+### 2.3 安装依赖
 
----
-
-# 2. 准备工作
-
-## 2.1 操作系统要求
-
-* Ubuntu 20.04：适用于 ROS Noetic 和 ROS2 Foxy
-* Ubuntu 22.04：适用于 ROS2 Humble
-* Ubuntu 18.04：目前不支持
-* Ubuntu 24.04：官方暂不支持，但经过部分修改后可能可以运行
-
-## 2.2 依赖项
-
-* OpenCV >= 4.2.0
-  推荐版本：4.5.5 / 4.8.0
-  **请确保系统中只安装一个版本的 OpenCV**
-* yaml-cpp
-* thread
-* OpenSSL
-* Eigen3
-
-## 2.3 安装依赖
-
-### 2.3.1 系统依赖
+#### 2.3.1 系统依赖
 
 ```shell
 sudo apt update
-
 sudo apt-get install build-essential cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
 ```
 
-### 2.3.2 yaml-cpp
+#### 2.3.2 yaml-cpp
 
 ```shell
 sudo apt update
-
 sudo apt install -y libyaml-cpp-dev
 ```
 
-### 2.3.3 libusb
+#### 2.3.3 libusb
 
 ```shell
 sudo apt update
-
 sudo apt install -y libusb-1.0-0-dev
 ```
 
-### 2.3.4 OpenCV
+#### 2.3.4 OpenCV
 
 ```shell
 sudo apt update
-
 sudo apt-get install libopencv-dev
 ```
 
-### 2.3.5 ROS 安装
+#### 2.3.5 ROS
 
-ROS Noetic 安装请参考：
+根据使用的发行版参考安装说明：
 
-ROS Noetic installation instructions
+- [ROS Noetic 安装说明](https://wiki.ros.org/noetic/Installation)。
+- [ROS 2 Foxy 安装说明](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)。
+- [ROS 2 Humble 安装说明](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)。
 
-ROS2 Foxy 安装请参考：
+## 3. 编译与运行
 
-ROS Foxy installation instructions
-
-ROS2 Humble 安装请参考：
-
-ROS Humble installation instructions
-
----
-
-# 3. 准备工作
-
-## 3.1 创建 Udev 规则
+### 3.1 创建 udev 规则
 
 ```shell
 sudo vim /etc/udev/rules.d/99-odin-usb.rules
 ```
 
-在 `99-odin-usb.rules` 文件中添加以下内容：
+向 `99-odin-usb.rules` 文件添加以下内容：
 
 ```shell
 SUBSYSTEM=="usb", ATTR{idVendor}=="2207", ATTR{idProduct}=="0019", MODE="0666", GROUP="plugdev"
 ```
 
-重新加载规则并重新插拔设备：
+重新加载规则，然后重新插拔设备：
 
 ```shell
 sudo udevadm control --reload
-
 sudo udevadm trigger
 ```
 
-## 3.2 获取源码
+### 3.2 获取源码
 
 ```shell
 git clone https://github.com/manifoldsdk/odin_ros_driver.git catkin_ws/src/odin_ros_driver
 ```
 
-注意：
+请将源码放在 `[ros_workspace]/src/` 目录下，否则可能出现编译错误。
 
-请务必将源码克隆到：
+### 3.3 编译
 
-```text
-[ros_workspace]/src/
-```
-
-目录下，否则可能会出现编译错误。
-
-## 3.3 编译
-
-### 3.3.1 ROS1（以 Noetic 为例）
+#### 3.3.1 ROS 1（以 Noetic 为例）
 
 ```shell
 source /opt/ros/noetic/setup.bash
-
 ./script/build_ros.sh
 ```
 
-### 3.3.2 ROS2（以 humble 为例）
+#### 3.3.2 ROS 2（以 Foxy 为例）
 
 ```shell
-source /opt/ros/humble/setup.bash
-
+source /opt/ros/foxy/setup.bash
 ./script/build_ros2.sh
 ```
 
-## 3.4 运行
+### 3.4 运行
 
-### 3.4.1 ROS1（以 Noetic 为例）
+#### 3.4.1 ROS 1（以 Noetic 为例）
 
 ```shell
 source [ros_workspace]/devel/setup.bash
-
 roslaunch odin_ros_driver [launch file]
 ```
 
-其中：
-
-* `odin_ros_driver`：功能包名称
-* `launch file`：启动文件
-* `ros_workspace`：用户的 ROS 工作空间
+- `odin_ros_driver`：功能包名称。
+- `[launch file]`：启动文件名称。
+- `[ros_workspace]`：用户的 ROS 工作空间。
 
 示例：
 
@@ -184,1417 +142,634 @@ roslaunch odin_ros_driver [launch file]
 roslaunch odin_ros_driver odin1_ros1.launch
 ```
 
-### 3.4.2 ROS2（以 humble 为例）
+#### 3.4.2 ROS 2（以 Foxy 为例）
 
+```shell
+source [ros2_workspace]/install/setup.bash
+ros2 launch odin_ros_driver [launch file]
+```
 
-source install/setup.bash
+- `odin_ros_driver`：功能包名称。
+- `[launch file]`：启动文件名称。
+- `[ros2_workspace]`：用户的 ROS 2 工作空间。
 
-ros2 launch odin_ros_driver odin1_ros2.launch.py
-
-
-其中：
-
-* `odin_ros_driver`：功能包名称
-* `launch file`：启动文件
-* `ros2_workspace`：用户的 ROS2 工作空间
-
-ROS2 Demo 启动示例：
+ROS 2 示例启动命令：
 
 ```shell
 ros2 launch odin_ros_driver odin1_ros2.launch.py
 ```
 
----
+### 3.5 工作模式
 
-# 3.5 工作模式
+通过 `config/control_command.yaml` 中的 `custom_map_mode` 参数选择工作模式。
 
-工作模式可以通过：
+#### 里程计模式
 
-```text
-config/control_command.yaml
-```
+设置 `custom_map_mode: 0`，启用纯里程计模式。该模式下，`map` 和 `odom` 坐标系的位姿相同。
 
-中的：
+如果里程计发生漂移，可以执行 `./set_param.sh algo_reset 1` 动态重置算法。
 
-```yaml
-custom_map_mode
-```
+#### SLAM 建图模式
 
-参数进行配置。
+设置 `custom_map_mode: 1`，启用 SLAM 模式。该模式在里程计模式基础上增加**回环检测**和**地图保存**功能。
 
----
+启动驱动后，Odin1 自动开始建图并缓存地图数据。采集完成后，在驱动源码目录执行 `./set_param.sh save_map 1`，保存本次程序启动以来采集的地图。保存目录和文件名分别由 `mapping_result_dest_dir`、`mapping_result_file_name` 指定；未指定时采用默认值。
 
-## 里程计模式（Odometry mode）
+地图保存目录留空时，默认保存到驱动目录的 `map/{driver_start_time}/`，不使用 `.ros`。使用 symlink-install 时对应驱动源码的 map 目录；可通过 `mapping_result_dest_dir` 显式指定其他目录。
 
-设置：
+首次保存后，可以再次执行命令保存新的地图。每次保存均生成一个新文件，**连续两次保存至少间隔 5 秒**。
 
-```yaml
-custom_map_mode = 0
-```
+地图原点对应程序启动时的 `odom` 坐标系原点。
 
-启用里程计模式。
+#### 重定位模式
 
-在此模式下：
+设置 `custom_map_mode: 2`，并通过 `relocalization_map_abs_path` 指定已有地图的**绝对路径**。
 
-```text
-map frame
-```
+启动后，Odin1 根据当前视角和指定地图进行重定位。为提高成功率，建议初始位置距离原建图轨迹不超过 1 米，姿态误差不超过 ±10°。
 
-和：
+重定位效果高度依赖环境。在特征明显的场景中，超出 1 米或 10° 也可能成功；部分环境则要求更严格的初始位置和姿态。应在目标场景中测试实际容差。
 
-```text
-odom frame
-```
+如果初始重定位失败，系统暂时进入备用 SLAM 模式，此时不支持保存地图。用户可以移动 Odin1，系统会在后台持续尝试重定位。成功后，将发布 `map` 与 `odom` 之间的 TF。初始化后轻微晃动或移动设备可能有助于重定位。
 
-具有相同的位姿。
+原文列出的 `/odin1/cloud_slam`、`/odin1/odom`、`/odin1/highodom`、`/odin1/path` 数据位于 `odom` 坐标系下。如需转换到 `map` 坐标系，应应用相应 TF。当前版本里程计的实际话题名称见 4.3 节。
 
-如果发现 `odom` 数据发生漂移，可以使用以下脚本命令动态重置算法：
+## 4. 文件结构与数据格式
+
+### 4.1 文件结构
 
 ```shell
-./set_param.sh algo_reset 1
-```
-
----
-
-## SLAM 模式
-
-设置：
-
-```yaml
-custom_map_mode = 1
-```
-
-启用 SLAM 模式。
-
-该模式提供完整的 SLAM 系统，在 Odometry 模式的基础上增加：
-
-* **回环检测（Loop Closure Detection）**
-* **地图保存（Map Saving）**
-
-功能。
-
-启动驱动后，Odin1 会自动开始建图并缓存地图数据。
-
-当场景采集完成后，需要在驱动源码目录中执行：
-
-```shell
-./set_param.sh save_map 1
-```
-
-保存程序启动以来收集的全部地图数据。
-
-地图保存位置由：
-
-```yaml
-mapping_result_dest_dir
-```
-
-和：
-
-```yaml
-mapping_result_file_name
-```
-
-两个参数决定，它们位于：
-
-```text
-config/control_command.yaml
-```
-
-中。
-
-如果没有指定，则使用默认值。
-
-第一次保存后，可以再次执行保存命令生成新的地图。
-
-每一次保存操作都会生成一个新的地图文件。
-
-> 注意：连续两次保存操作之间请至少间隔 5 秒。
-
-地图原点对应于程序启动时：
-
-```text
-odom 坐标系的原点
-```
-
----
-
-### 重定位模式（Relocalization mode）
-
-要启用重定位模式，设置：
-
-```yaml
-custom_map_mode = 2
-```
-
-并且需要通过：
-
-```yaml
-relocalization_map_abs_path
-```
-
-指定预先构建好的地图的**绝对路径**。
-
-启动后，Odin1 会根据当前视角和指定地图自动开始重定位。
-
-为了保证较高的成功率，建议设备的初始位置满足：
-
-* 距离原 SLAM 轨迹位置：1 米以内
-* 姿态误差：±10°
-
-即建议从原来建图时的附近位置和朝向开始启动。
-
-需要注意的是，重定位性能高度依赖环境。
-
-在特征非常明显的环境中，即使超出：
-
-```text
-1m / 10°
-```
-
-范围，也可能成功匹配。
-
-而在某些环境中，可能需要更加严格的初始位置条件。
-
-建议在实际目标环境中进行测试，以确定实际可接受的误差范围。
-
-如果初始重定位失败：
-
-系统会暂时进入一种**备用 SLAM 模式**。
-
-在此状态下：
-
-* 不会保存地图
-* 用户可以自由移动 Odin1
-* 系统会在后台持续尝试重定位
-
-一旦重定位成功：
-
-系统将发布：
-
-```text
-map → odom
-```
-
-之间的 TF。
-
-> 提示：初始化后轻微摇晃或移动设备，有助于提高重定位成功率。
-
-以下 Topic 发布在 `odom` 坐标系下：
-
-```text
-/odin1/cloud_slam
-/odin1/odom
-/odin1/highodom
-/odin1/path
-```
-
-如果需要获得它们在 `map` 坐标系下的数据，需要应用：
-
-```text
-odom → map
-```
-
-之间的 TF 变换。
-
----
-
-# 4. 文件结构和数据格式
-
-## 4.1 文件结构
-
-```text
-Odin_ROS_Driver/                // ROS1/ROS2 驱动包
-
+Odin_ROS_Driver/                // ROS 1 / ROS 2 驱动包
     3rdparty/                   // 第三方库
-
     src/
-
-        host_sdk_sample.cpp
-        // 示例源码
-
-        yaml_parser.cpp
-        // YAML 参数读取源码
-
-        rawCloudRender.cpp
-        // RenderCloud 源码
-
-        depth_image_ros_node.cpp
-        // ROS1 深度图节点
-
-        depth_image_ros2_node.cpp
-        // ROS2 深度图节点
-
-        pcd2depth_ros.cpp
-        // ROS1 pcd2depth 节点
-
-        pcd2depth_ros2.cpp
-        // ROS2 pcd2depth 节点
-
-        pointcloud_depth_converter.cpp
-        // 点云转深度图源码
-
-        cloud_reprojection_ros.cpp
-        // 点云重投影节点源码（ROS1/ROS2）
-
-        cloud_reprojector.cpp
-        // 点云重投影核心逻辑
-
+        host_sdk_sample.cpp     // 示例源代码
+        yaml_parser.cpp         // YAML 参数读取实现
+        rawCloudRender.cpp      // 彩色点云渲染实现
+        depth_image_ros_node.cpp // ROS 1 深度图节点
+        depth_image_ros2_node.cpp // ROS 2 深度图节点
+        pcd2depth_ros.cpp       // ROS 1 点云转深度图节点
+        pcd2depth_ros2.cpp      // ROS 2 点云转深度图节点
+        pointcloud_depth_converter.cpp // 点云转深度图实现
+        cloud_reprojection_ros.cpp // 点云重投影节点（ROS 1 / ROS 2）
+        cloud_reprojector.cpp   // 点云重投影核心逻辑
     lib/
-
-        liblydHostApi_amd.a
-        // AMD 平台静态库
-
-        liblydHostApi_arm.a
-        // ARM 平台静态库
-
+        liblydHostApi_amd.a     // x86_64 平台静态库
+        liblydHostApi_arm.a     // ARM 平台静态库
     include/
-
-        host_sdk_sample.h
-        // 示例头文件
-
-        lidar_api_type.h
-        // API 数据结构头文件
-
-        lidar_api.h
-        // API 函数声明
-
-        yaml_parser.h
-        // 参数文件读取头文件
-
-        rawCloudRender.h
-        // RenderCloud API
-
-        data_logger.h
-        // save_data 日志相关
-
-        depth_image_ros_node.hpp
-
-        depth_image_ros2_node.hpp
-
-        pointcloud_depth_converter.hpp
-
-        cloud_reprojection_ros_node.hpp
-
-        cloud_reprojector.hpp
-        // 点云重投影核心类
-
+        host_sdk_sample.h       // 示例头文件
+        lidar_api_type.h        // API 数据结构定义
+        lidar_api.h             // API 函数声明
+        yaml_parser.h           // 参数文件读取接口
+        rawCloudRender.h        // 彩色点云渲染接口
+        data_logger.h           // 数据保存与日志接口
+        depth_image_ros_node.hpp // ROS 1 深度图节点
+        depth_image_ros2_node.hpp // ROS 2 深度图节点
+        pointcloud_depth_converter.hpp // 点云转深度图接口
+        cloud_reprojection_ros_node.hpp // 点云重投影节点接口（ROS 1 / ROS 2）
+        cloud_reprojector.hpp   // 点云重投影核心类
     config/
-
-        control_command.yaml
-        // 驱动控制参数文件
-
-        calib.yaml
-        // 设备标定 YAML
-        // 每台设备不同，每次连接 ROS 驱动时从设备获取
-
+        control_command.yaml    // 驱动控制参数文件
+        calib.yaml              // 设备专用标定文件，连接时从设备获取
     launch_ROS1/
-
-        odin1_ros1.launch
-        // ROS1 启动文件
-
+        odin1_ros1.launch       // ROS 1 启动文件
     launch_ROS2/
-
-        odin1_ros2.launch.py
-        // ROS2 启动文件
-
+        odin1_ros2.launch.py    // ROS 2 启动文件
     script/
-
-        build_ros1.sh
-        // ROS1 编译脚本
-
-        build_ros2.sh
-        // ROS2 编译脚本
-
-    recorddata/
-        // 保存可导入 MindCloud 的录制数据
-
-    log/
-        // 日志文件目录
-
-        Driver_{timestamp}/
-        // 每次驱动启动创建一个目录
-
-            Conn_{timestamp}/
-            // 每次 Odin1 设备连接创建一个目录
-
-                dev_status.csv
-                // 设备状态日志
-
-    README.md
-    // 使用说明
-
-    CMakeLists.txt
-    // CMake 编译文件
-
-    License
-    // 许可证文件
+        build_ros1.sh           // ROS 1 编译安装脚本
+        build_ros2.sh           // ROS 2 编译安装脚本
+    recorddata/                 // 可导入 MindCloud 的录制数据
+    log/                        // 日志目录
+        Driver_{timestamp}/     // 每次驱动启动对应的日志目录
+            Conn_{timestamp}/   // 每次设备连接对应的日志目录
+                dev_status.csv  // 设备状态日志
+    README.md                   // 使用说明
+    CMakeLists.txt              // CMake 构建文件
+    License                     // 许可证文件
 ```
 
----
+### 4.2 启动文件
 
-## 4.2 Launch 文件
+| 启动文件 | 用途 |
+|---|---|
+| `odin1_ros1.launch` | ROS 1 的 Odin1 基础操作示例 |
+| `odin1_ros2.launch.py` | ROS 2 的 Odin1 基础操作示例 |
 
-| Launch 文件名称            | 描述                          |
-| ---------------------- | --------------------------- |
-| `odin1_ros1.launch`    | ROS1 - Odin1 基础操作 Demo 启动文件 |
-| `odin1_ros2.launch.py` | ROS2 - Odin1 基础操作 Demo 启动文件 |
+### 4.3 ROS 话题
 
----
+驱动内部参数位于 `config/control_command.yaml`。下表列出常用话题及控制参数；部分原文话题名与当前源码不同，以下按当前版本源码列出。
 
-# 4.3 ROS Topics
+| 话题 | 控制参数 | 说明 |
+|---|---|---|
+| `odin1/imu` | `sendimu` | IMU 数据 |
+| `odin1/image` | `sendrgb` | 从设备原始 JPEG 解码得到的 RGB 相机图像，格式为 `bgr8` |
+| `odin1/image/undistorted` | `sendrgbundistort` | 使用设备标定文件去畸变后的 RGB 图像 |
+| `odin1/image/compressed` | `sendrgbcompressed` | 设备原始 JPEG 压缩图像 |
+| `odin1/cloud_raw` | `senddtof` | 原始点云 |
+| `odin1/cloud_render` | `sendcloudrender` | 主机结合原始点云、RGB 图像和设备标定生成的彩色点云 |
+| `odin1/cloud_slam` | `sendcloudslam` | SLAM 点云 |
+| `odin1/odometry` | `sendodom` | 里程计 |
+| `odin1/odometry_highfreq` | `sendodom` | 高频里程计 |
+| `odin1/path` | `showpath` | 里程计轨迹 |
+| `tf` | `sendodom` | TF 坐标变换树 |
+| `odin1/depth_img_competetion` | `senddepth` | 稠密深度图示例，计算开销较大。与去畸变图像对应，建议直接订阅，不建议使用 `echo`；原始数值已经是深度，无需再次转换 |
+| `odin1/depth_img_competetion_cloud` | `senddepth` | 稠密深度点云示例，计算开销较大 |
+| `odin1/reprojected_image` | `sendreprojection` | 主机利用里程计将 `cloud_slam` 重投影到相机图像上的结果 |
 
-Odin ROS Driver 的内部参数定义在：
+### 4.4 数据格式
 
-```text
-config/control_command.yaml
+#### 1. 原始点云 `cloud_raw`
+
+包含以下字段：
+
+```
+float32 x             // X 轴坐标，单位：米
+float32 y             // Y 轴坐标，单位：米
+float32 z             // Z 轴坐标，单位：米
+uint8  intensity      // 反射强度，范围：0–255
+uint16 confidence     // 点置信度，典型范围约 0–1300，越大越可靠；建议过滤阈值 30–35，按场景调整
+float32 offset_time   // 相对于基准时间戳的偏移量，单位：秒
 ```
 
-以下是常用 Topic 及对应参数说明。
-
-| Topic                               | control_command.yaml 参数 | 详细说明                                                                                                        |
-| ----------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `odin1/imu`                         | `sendimu`               | IMU Topic                                                                                                   |
-| `odin1/image`                       | `sendrgb`               | RGB 相机 Topic，由设备原始 JPEG 数据解码，格式为 `bgr8`                                                                     |
-| `odin1/image_undistort`             | `sendrgbundistort`      | 去畸变 RGB 图像，使用设备提供的 `calib.yaml` 处理                                                                          |
-| `odin1/image/compressed`            | `sendrgbcompressed`     | RGB 相机压缩 Topic，直接使用设备原始 JPEG 数据                                                                             |
-| `odin1/cloud_raw`                   | `senddtof`              | 原始点云 Topic                                                                                                  |
-| `odin1/cloud_render`                | `sendcloudrender`       | 渲染点云 Topic，由原始点云、RGB 图像和 `calib.yaml` 处理得到                                                                  |
-| `odin1/cloud_slam`                  | `sendcloudslam`         | SLAM 点云 Topic                                                                                               |
-| `odin1/odometry`                    | `sendodom`              | 里程计 Topic                                                                                                   |
-| `odin1/odometry_high`               | `sendodom`              | 高频里程计 Topic                                                                                                 |
-| `odin1/path`                        | `showpath`              | 里程计轨迹 Topic                                                                                                 |
-| `tf`                                | `sendodom`              | TF 坐标树 Topic                                                                                                |
-| `odin1/depth_img_competetion`       | `senddepth`             | 稠密深度图 Topic。Demo 功能，计算量较大。与 `odin1/image_undistort` 一一对应。需要使用数据时建议直接订阅该 Topic，不建议 `echo`。原始数值已经是深度数据，无需再次转换 |
-| `odin1/depth_img_competetion_cloud` | `senddepth`             | 稠密深度点云 Topic。Demo 功能，计算量较大                                                                                  |
-| `odin1/reprojected_image`           | `sendreprojection`      | 将点云重投影到图像的 Topic。使用里程计将 `cloud_slam` 投影到相机图像，由主机端处理                                                         |
-
----
-
-# 4.4 数据格式
-
-## 1. 原始点云 cloud_raw
-
-原始点云：
-
-```text
-cloud_raw
-```
-
-具有以下字段：
-
-```text
-float32 x
-// X 轴坐标，单位：米
-
-float32 y
-// Y 轴坐标，单位：米
-
-float32 z
-// Z 轴坐标，单位：米
-
-uint8 intensity
-// 反射强度，范围 0–255
-
-uint16 confidence
-// 点置信度
-// 在典型场景中实际范围约为 0–1300
-// 数值越大表示该点越可靠
-// 推荐过滤阈值：30–35，需要根据实际情况调整
-
-float32 offset_time
-// 相对于基础时间戳的时间偏移
-// 单位：秒
-```
-
-如果需要在 PCL 中使用该自定义格式，首先定义点类型：
+在 PCL 中使用该自定义格式时，先定义点类型：
 
 ```cpp
 /*** LS ***/
-
 namespace ls_ros {
-
     struct EIGEN_ALIGN16 Point {
-
         float x;
-
         float y;
-
         float z;
-
         uint8_t intensity;
-
         uint16_t confidence;
-
         float offset_time;
-
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
     };
-
-}  // namespace ls_ros
+}  // ls_ros 命名空间
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(ls_ros::Point,
-
       (float, x, x)
-
       (float, y, y)
-
       (float, z, z)
-
       (uint8_t, intensity, intensity)
-
       (uint16_t, confidence, confidence)
-
       (float offset_time , offset_time)
-
 )
 ```
 
-然后可以方便地将 ROS 的：
+然后将 ROS 的 `sensor_msgs::PointCloud2` 消息转换成 PCL 点云：
 
-```cpp
-sensor_msgs::PointCloud2
 ```
-
-转换为 PCL 点云：
-
-```cpp
 pcl::PointCloud<ls_ros::Point> ls_cloud;
-
 pcl::fromROSMsg(*msg, ls_cloud);
 ```
 
----
+#### 2. SLAM 点云与彩色点云
 
-## 2. SLAM 点云和渲染点云
+`cloud_slam` 和 `cloud_render` 包含以下字段：
 
-以下两种点云：
-
-```text
-cloud_slam
+```
+float32 x             // X 轴坐标，单位：米
+float32 y             // Y 轴坐标，单位：米
+float32 z             // Z 轴坐标，单位：米
+float32 rgb           // RGB 颜色值
 ```
 
-以及：
+### 4.5 其他功能参数
 
-```text
-cloud_render
-```
+| 参数 | 说明 |
+|---|---|
+| `use_host_ros_time` | 时间同步模式：`0` 使用 Odin 内部系统时间，通常推荐；`1` 使用主机收到数据时的 ROS 时间，仅用于特定需求；`2` 通过类似 NTP 的方式，将 Odin1 时间对齐到主机时间轴 |
+| `strict_usb3.0_check` | 严格检查 USB 3.0；关闭后允许在低于 USB 3.0 的连接上运行 |
+| `recorddata` | 以专有格式录制数据，可导入 MindCloud(TM) 后处理。存储开销较大，测试中 10 分钟数据约占 9.5 GB。IMU、图像、点云、位姿、旋转数据的时间戳与 `use_host_ros_time` 采用相同的对齐策略；原文将 `1`、`2` 均称为 NTP 模式，具体时间语义以本表对应模式的说明及实际代码为准 |
+| `devstatuslog` | 记录设备状态，包括 SoC 温度、CPU 和内存占用、dToF 温度、数据收发速率等，保存到日志目录中的 CSV 文件。每次启动创建新的日志文件 |
+| `showcamerapose` | 显示相机位姿和视场角 |
+| `custom_map_mode` | `0`：纯里程计；`1`：带回环检测的建图模式，可保存地图；`2`：重定位模式，需指定地图绝对路径，成功后输出 `map` 与 `odom` 之间的 TF |
+| `custom_init_pos` | 初始化位姿，原文标注为暂未使用 |
+| `relocalization_map_abs_path` | 重定位所用地图的绝对路径 |
+| `mapping_result_dest_dir`、`mapping_result_file_name` | 建图模式下地图保存目录和文件名；未指定时使用默认值 |
 
-具有以下字段：
+### 4.6 通过 ROS 服务在线调节 AE/AWB
 
-```text
-float32 x
-// X 坐标，单位：米
+驱动提供 4 个 ROS 服务，可在主数据流持续运行时，从另一终端调节相机自动曝光（AE）和自动白平衡（AWB）。底层 SDK 调用与驱动主控制路径共享互斥锁，可与正常运行并发调用。
 
-float32 y
-// Y 坐标，单位：米
+#### 服务列表
 
-float32 z
-// Z 坐标，单位：米
+| 服务名称 | 类型 | 用途 |
+|---|---|---|
+| `/odin1/get_ae` | `odin_ros_driver/srv/GetAe` | 查询当前 AE 状态 |
+| `/odin1/get_awb` | `odin_ros_driver/srv/GetAwb` | 查询当前 AWB 状态 |
+| `/odin1/set_ae` | `odin_ros_driver/srv/SetAe` | 设置 AE 模式，以及手动曝光时间和增益 |
+| `/odin1/set_awb` | `odin_ros_driver/srv/SetAwb` | 设置 AWB 模式，以及手动 R、B 通道增益 |
 
-float32 rgb
-// RGB 颜色值
-```
+#### 4.6.1 请求字段、范围与物理含义
 
----
+**`SetAe.Request`**
 
-# 4.5 其他功能参数
+| 字段 | 范围 | 含义 |
+|---|---|---|
+| `mode` | `0`（AUTO）或 `1`（MANUAL） | `0`：设备自动调节曝光，忽略下方两个浮点参数；`1`：锁定自动曝光，应用指定参数 |
+| `exposure_time` | `0.0001`～`0.033` 秒，仅手动模式 | 每帧传感器曝光时间；越长越亮，但运动模糊也越明显 |
+| `gain` | `1.0`～`64.0`，仅手动模式 | 模拟增益；越大越亮，但信噪比越差 |
 
-| 参数                                                     | 详细说明                                                                                                                                       |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `use_host_ros_time`                                    | 时间同步模式：`0` 使用 Odin 内部系统时间作为数据时间戳（典型且推荐）；`1` 使用主机接收到数据时的 ROS 时间（大多数用户不推荐）；`2` 通过类似 NTP 的同步方式将 Odin1 时间与主机时间对齐，时间戳位于主机时间轴上                   |
-| `strict_usb3.0_check`                                  | 严格检查 USB3.0。如果关闭，即使 USB 连接低于 USB3.0 标准也允许连接                                                                                                |
-| `recorddata`                                           | 以特定格式录制数据，可导入 MindCloud(TM) 进行后处理。会占用大量磁盘空间。测试显示 10 分钟数据约占用 9.5GB。录制文件中的 IMU / 图像 / 点云 / Pose / Rotate 时间戳与 `use_host_ros_time` 使用相同时间对齐策略 |
-| `devstatuslog`                                         | 设备状态日志。记录 SoC 温度、CPU 使用率、RAM 使用率、dToF 传感器温度等，以及数据收发速率，保存到 `log` 文件夹下的 `devstatus.csv`。每次启动驱动都会创建新的日志文件                                     |
-| `showcamerapose`                                       | 显示相机位姿和视场角                                                                                                                                 |
-| `custom_map_mode`                                      | 工作模式：模式 `0`：Odometry，map 和 odom 位姿相同；模式 `1`：建图模式，带回环检测，支持保存地图；模式 `2`：重定位模式，需要指定地图文件绝对路径，成功后输出 map 和 odom 之间的 TF                            |
-| `custom_init_pos`                                      | 初始化位置，目前未使用                                                                                                                                |
-| `relocalization_map_abs_path`                          | 地图文件绝对路径，用于重定位模式                                                                                                                           |
-| `mapping_result_dest_dir` 和 `mapping_result_file_name` | 建图模式下地图保存路径和文件名，如果未指定则使用默认值                                                                                                                |
+**`SetAwb.Request`**
 
----
+| 字段 | 范围 | 含义 |
+|---|---|---|
+| `mode` | `0`（AUTO）或 `1`（MANUAL） | `0`：设备自动调节白平衡；`1`：锁定白平衡，应用指定增益 |
+| `rgain` | `0.1`～`4.0`，仅手动模式 | R 通道增益；相对 `bgain` 越大，画面越偏暖、偏黄红 |
+| `bgain` | `0.1`～`4.0`，仅手动模式 | B 通道增益；相对 `rgain` 越大，画面越偏冷、偏蓝 |
 
-# 4.6 通过 ROS Service 在线调整 AE/AWB
+Gr、Gb 通道增益由设备固定为 `1.0`，不可调节。
 
-驱动提供了 4 个 ROS Service，允许用户在不停止主数据流的情况下，从其他终端动态调整：
+#### 4.6.2 响应字段
 
-* 相机自动曝光（AE）
-* 相机自动白平衡（AWB）
+4 个服务均返回 `success`（布尔值）和 `rc`（32 位整数）；查询服务还返回当前状态。
 
-底层 SDK 调用与驱动主控制路径共享，并通过内部互斥锁进行串行化，因此可以在正常运行过程中安全调用这些 Service。
+**`GetAe.Response`**
 
-## Service 列表
+| 字段 | 典型范围 | 含义 |
+|---|---|---|
+| `exposure_time` | `0.0001`～`0.033` 秒 | 当前曝光时间 |
+| `gain` | `1.0`～`64.0` | 当前模拟增益 |
+| `iso` | `100`～`6400` | 等效 ISO |
+| `brightness` | `0`～`255` | 平均帧亮度 |
+| `is_converged` | `0` 或 `1` | `1` 表示 AE 已收敛 |
+| `env_lv` | `0`～`15` | 环境亮度指数，越大表示越亮 |
+| `fps` | 约 `10`、`14.5`、`29` | 当前帧率 |
 
-| Service 名称       | 类型                           | 用途                   |
-| ---------------- | ---------------------------- | -------------------- |
-| `/odin1/get_ae`  | `odin_ros_driver/srv/GetAe`  | 查询当前 AE 状态           |
-| `/odin1/get_awb` | `odin_ros_driver/srv/GetAwb` | 查询当前 AWB 状态          |
-| `/odin1/set_ae`  | `odin_ros_driver/srv/SetAe`  | 设置 AE 模式以及手动曝光/增益    |
-| `/odin1/set_awb` | `odin_ros_driver/srv/SetAwb` | 设置 AWB 模式以及手动 R/B 增益 |
+**`GetAwb.Response`**
 
----
+| 字段 | 典型范围 | 含义 |
+|---|---|---|
+| `rgain`、`bgain` | `0.1`～`4.0` | R、B 通道增益 |
+| `grgain`、`gbgain` | 固定为 `1.0` | 由设备固定的 Gr、Gb 通道增益 |
+| `cct` | `2500`～`8000` K | 相关色温 |
+| `ccri` | `-50`～`50` | 色温偏离指数，`0` 表示位于普朗克轨迹上 |
+| `is_converged` | `0` 或 `1` | `1` 表示 AWB 已收敛 |
 
-## 4.6.1 请求字段、范围及物理意义
+#### 4.6.3 `rc` 返回码
 
-### SetAe.Request
+| `rc` | 含义 |
+|---|---|
+| `0` | 成功 |
+| `400` | 设备载荷过短 |
+| `401` | 设备不支持该操作码 |
+| `402` | 参数长度错误 |
+| `403` | **参数越界**，常见于手动参数超出上述范围 |
+| `404` | 设备端套接字错误 |
+| `405` | 设备端 `ae_control` 无应答，请确认 `lydapp` 已运行 |
+| `255`（`0xFF`） | `ae_control` 返回未知操作码 |
+| `-1` | SDK 未初始化 |
+| `-2`～`-5` | USB 传输异常、超时或应答格式错误 |
+| `-100` | **驱动尚未打开设备**，请等待连接成功后再调用 |
 
-| 字段              | 范围                     | 含义                                                |
-| --------------- | ---------------------- | ------------------------------------------------- |
-| `mode`          | `0`（AUTO）或 `1`（MANUAL） | `0`：设备自行运行 AE 自动曝光，下方两个参数忽略；`1`：设备锁定自动曝光，并应用提供的参数 |
-| `exposure_time` | `0.0001 ~ 0.033 s`     | 手动模式下的每帧曝光时间。越长画面越亮，但运动模糊越严重                      |
-| `gain`          | `1.0 ~ 64.0`           | 手动模式下的模拟增益。越大画面越亮，但信噪比越差                          |
+#### 4.6.4 调用示例
 
-### SetAwb.Request
-
-| 字段      | 范围                     | 含义                                 |
-| ------- | ---------------------- | ---------------------------------- |
-| `mode`  | `0`（AUTO）或 `1`（MANUAL） | `0`：设备自动运行 AWB；`1`：锁定 AWB 并使用提供的增益 |
-| `rgain` | `0.1 ~ 4.0`            | 红色通道增益。相对于 `bgain` 越大，画面越暖、越偏黄红    |
-| `bgain` | `0.1 ~ 4.0`            | 蓝色通道增益。相对于 `rgain` 越大，画面越冷、越偏蓝     |
-
-> Gr / Gb 通道增益由设备固定为 `1.0`，无法调整。
-
----
-
-## 4.6.2 响应字段
-
-所有 4 个 Service 都返回：
-
-```text
-success
-```
-
-类型：
-
-```text
-bool
-```
-
-以及：
-
-```text
-rc
-```
-
-类型：
-
-```text
-int32
-```
-
-其中 Get 类 Service 还会返回查询到的状态信息。
-
-### GetAe.Response
-
-| 字段              | 典型范围                | 含义            |
-| --------------- | ------------------- | ------------- |
-| `exposure_time` | `0.0001 ~ 0.033 s`  | 当前曝光时间        |
-| `gain`          | `1.0 ~ 64.0`        | 当前模拟增益        |
-| `iso`           | `100 ~ 6400`        | 等效 ISO        |
-| `brightness`    | `0 ~ 255`           | 平均画面亮度        |
-| `is_converged`  | `0` 或 `1`           | `1` 表示 AE 已收敛 |
-| `env_lv`        | `0 ~ 15`            | 环境亮度指数，数值越大越亮 |
-| `fps`           | `~10 / ~14.5 / ~29` | 当前帧率          |
-
-### GetAwb.Response
-
-| 字段                  | 典型范围            | 含义                 |
-| ------------------- | --------------- | ------------------ |
-| `rgain` / `bgain`   | `0.1 ~ 4.0`     | R / B 通道增益         |
-| `grgain` / `gbgain` | `1.0`           | Gr / Gb 增益，设备固定    |
-| `cct`               | `2500 ~ 8000 K` | 相关色温               |
-| `ccri`              | `-50 ~ 50`      | 色温偏离指数，0 表示位于普朗克轨迹 |
-| `is_converged`      | `0` 或 `1`       | `1` 表示 AWB 已收敛     |
-
----
-
-## 4.6.3 rc 返回码
-
-| rc           | 含义                                     |
-| ------------ | -------------------------------------- |
-| `0`          | 成功                                     |
-| `400`        | 设备载荷过短                                 |
-| `401`        | 设备不支持该 opcode                          |
-| `402`        | 参数长度错误                                 |
-| `403`        | **参数超出范围**，通常是手动参数超过允许范围               |
-| `404`        | 设备端 Socket 错误                          |
-| `405`        | 设备端 `ae_control` 没有响应，请确认 `lydapp` 已运行 |
-| `255 (0xFF)` | `ae_control` 返回未知 opcode               |
-| `-1`         | SDK 未初始化                               |
-| `-2 ~ -5`    | USB 传输异常、超时或返回数据格式错误                   |
-| `-100`       | **驱动尚未打开设备**，请等待设备连接成功                 |
-
----
-
-## 4.6.4 使用示例
-
-### ROS2（Humble）
-
-在一个终端启动驱动，然后打开另一个终端：
+ROS 2 Humble：在一个终端启动驱动，在另一个终端执行：
 
 ```bash
 source install/setup.bash
 
 # 查询当前状态
-
-ros2 service call /odin1/get_ae odin_ros_driver/srv/GetAe
-
+ros2 service call /odin1/get_ae  odin_ros_driver/srv/GetAe
 ros2 service call /odin1/get_awb odin_ros_driver/srv/GetAwb
 
-# 设置 AE 为自动模式
-
+# 设置 AE 为自动
 ros2 service call /odin1/set_ae odin_ros_driver/srv/SetAe "{mode: 0}"
 
-# 设置 AE 为手动模式
-# 曝光时间 10ms，增益 4.0
-
+# 设置 AE 为手动，10 毫秒曝光，增益 4.0
 ros2 service call /odin1/set_ae odin_ros_driver/srv/SetAe \
   "{mode: 1, exposure_time: 0.010, gain: 4.0}"
 
-# 设置 AWB 为手动模式
-# rgain=1.5，bgain=2.0
-
+# 设置 AWB 为手动，rgain=1.5、bgain=2.0
 ros2 service call /odin1/set_awb odin_ros_driver/srv/SetAwb \
   "{mode: 1, rgain: 1.5, bgain: 2.0}"
 
 # 恢复自动模式
-
-ros2 service call /odin1/set_ae odin_ros_driver/srv/SetAe "{mode: 0}"
-
+ros2 service call /odin1/set_ae  odin_ros_driver/srv/SetAe  "{mode: 0}"
 ros2 service call /odin1/set_awb odin_ros_driver/srv/SetAwb "{mode: 0}"
 
-# 查看 srv 完整定义
-
+# 查看服务完整定义
 ros2 interface show odin_ros_driver/srv/SetAe
 ```
 
-### ROS1（Noetic）
-
-启动 Driver 后，在新的终端执行：
+ROS 1 Noetic：启动驱动后，在另一个终端执行：
 
 ```bash
 source devel/setup.bash
 
-# 查询
-
+# 查询当前状态
 rosservice call /odin1/get_ae
-
 rosservice call /odin1/get_awb
 
-# 设置 AE 手动模式
+# 设置 AE 为手动
+rosservice call /odin1/set_ae  "{mode: 1, exposure_time: 0.010, gain: 4.0}"
 
-rosservice call /odin1/set_ae "{mode: 1, exposure_time: 0.010, gain: 4.0}"
-
-# 设置 AWB 手动模式
-
+# 设置 AWB 为手动
 rosservice call /odin1/set_awb "{mode: 1, rgain: 1.5, bgain: 2.0}"
 
-# 恢复自动模式
-# ROS1 要求所有字段都必须填写
-
-rosservice call /odin1/set_ae "{mode: 0, exposure_time: 0.0, gain: 0.0}"
-
+# 恢复自动模式（ROS 1 要求填齐全部字段）
+rosservice call /odin1/set_ae  "{mode: 0, exposure_time: 0.0, gain: 0.0}"
 rosservice call /odin1/set_awb "{mode: 0, rgain: 0.0, bgain: 0.0}"
 
-# 查看 srv 定义
-
+# 查看服务完整定义
 rossrv show odin_ros_driver/SetAe
 ```
 
----
+#### 4.6.5 不同场景的推荐起始参数
 
-## 4.6.5 不同场景的推荐起始参数
+**AE 参数：`exposure_time` 和 `gain`**
 
-### AE
+| 场景 | `exposure_time` | `gain` |
+|---|---|---|
+| 明亮室外 | `0.001`～`0.005` 秒 | `1.0`～`2.0` |
+| 普通室内 | `0.008`～`0.015` 秒 | `2.0`～`8.0` |
+| 暗光环境 | `0.020`～`0.030` 秒 | `8.0`～`32.0` |
+| 极暗环境 | `0.033` 秒 | `32.0`～`64.0` |
 
-| 场景   | `exposure_time`   | `gain`        |
-| ---- | ----------------- | ------------- |
-| 明亮室外 | `0.001 ~ 0.005 s` | `1.0 ~ 2.0`   |
-| 普通室内 | `0.008 ~ 0.015 s` | `2.0 ~ 8.0`   |
-| 暗光环境 | `0.020 ~ 0.030 s` | `8.0 ~ 32.0`  |
-| 极暗环境 | `0.033 s`         | `32.0 ~ 64.0` |
+**AWB 参数：`rgain` 和 `bgain`**
 
-### AWB
+| 目标色调 | `rgain` | `bgain` |
+|---|---|---|
+| 暖色，如钨丝灯、夕阳 | `2.0`～`2.5` | `1.0`～`1.2` |
+| 中性，如 D65 日光 | `1.5`～`1.7` | `1.8`～`2.0` |
+| 冷色，如阴天、荧光灯 | `1.2`～`1.4` | `2.2`～`2.6` |
+| 极冷色 | `1.0` | `3.0`～`4.0` |
 
-| 目标色调       | `rgain`     | `bgain`     |
-| ---------- | ----------- | ----------- |
-| 暖色（钨丝灯、夕阳） | `2.0 ~ 2.5` | `1.0 ~ 1.2` |
-| 中性（D65 日光） | `1.5 ~ 1.7` | `1.8 ~ 2.0` |
-| 冷色（阴天、荧光灯） | `1.2 ~ 1.4` | `2.2 ~ 2.6` |
-| 极冷色调       | `1.0`       | `3.0 ~ 4.0` |
+#### 4.6.6 注意事项
 
----
+- 服务等待设备应答时最长可能阻塞约 10 秒，正常延迟为几十毫秒。
+- 手动模式不会跨驱动或设备重启保留，每次重新连接默认恢复 AUTO。
+- `rc = -100` 表示驱动尚未打开设备，应等待日志显示设备连接成功后再调用。
+- 最大曝光时间受帧周期 `1/fps` 限制。在约 29 Hz、周期约 34 毫秒的情况下，`0.033` 秒已接近帧周期上限。原文此处写作 `dtof_fps = 290`；当前配置的约 29 Hz RGB 档位使用 `rgb_fps: 290`、`dtof_fps: 100`，请按配置文件中的配对表设置。
 
-## 4.6.6 注意事项
+### 4.7 运行时设备控制
 
-* Service 最长可能阻塞约 10 秒等待设备响应。
-* 正常情况下延迟通常只有几十毫秒。
-* 手动模式不会跨 Driver 或设备重启保存。
-* 每次重新连接设备后都会恢复 AUTO 自动模式。
-* `rc = -100` 表示 Driver 尚未成功打开设备。
-* 请等待 Driver 日志出现：
+除 AE/AWB 服务外，驱动还提供其他运行时 ROS 服务，并支持 `set_param.sh` 命令文件接口，可用于保存地图、重置算法和获取设备日志等操作。
 
-```text
-device connected
-```
+完整服务列表、请求与响应字段，以及命令文件接口的用法见 [运行时服务操作说明](docs/runtime_service_operations.md)。
 
-后再调用 Service。
+## 5. 常见问题
 
-最大可用：
+### 5.1 重新启动主机 SDK 时出现段错误
 
-```text
-exposure_time
-```
+**错误信息**
 
-受到帧周期：
+`No device connected after 60 seconds`
 
-```text
-1 / fps
-```
+**处理方法**
 
-限制。
+1. 断开并重新接通 Odin 模块电源。
+2. 等设备重新启动后，再启动 SDK。
 
-例如：
+### 5.2 编译时库链接失败
 
-```text
-dtof_fps = 290
-```
+**错误信息**
 
-表示：
+`ld: cannot find -llydHostApi`，或出现符号查找错误。
 
-```text
-29 Hz
-```
+**处理方法**
 
-帧周期约：
+1. 清理旧编译产物。以下是原文提供的命令。
 
-```text
-34 ms
-```
-
-此时：
-
-```text
-0.033 s
-```
-
-的曝光时间已经接近一帧的时间边界。
-
----
-
-# 5. FAQ
-
-## 5.1 重新启动 Host SDK 时出现 Segmentation Fault
-
-### 错误信息
-
-```text
-No device connected after 60 seconds
-```
-
-### 解决方案
-
-1. 重新给 Odin 模块上电
-
-即：
-
-```text
-断开 Odin 电源后重新连接
-```
-
-2. 重新初始化 Odin SDK
-
-即在设备重启后重新执行 SDK。
-
----
-
-## 5.2 编译时库绑定失败
-
-### 错误信息
-
-```text
-ld: cannot find -llydHostApi
-```
-
-或者：
-
-```text
-symbol lookup errors
-```
-
-### 解决方法
-
-#### 1. 清理之前的编译文件
-
-ROS1：
+ROS 1：
 
 ```shell
-rm -rf devel/ build/
+rm -rf devel/ build/  
 ```
 
-ROS2：
+ROS 2：
 
 ```shell
-rm -rf devel/ install/ log/
+rm -rf devel/ install/ log/ 
 ```
 
-#### 2. 重新执行安装脚本
+2. 重新运行编译安装脚本。
 
-重新编译驱动。
+### 5.3 Docker 无法显示图形界面
 
----
+**错误信息**
 
-## 5.3 Docker GUI 图形界面转发失败
+`Unable to open X display` 或 `No protocol specified`。
 
-### 错误信息
-
-```text
-Unable to open X display
-```
-
-或者：
-
-```text
-No protocol specified
-```
-
-### 解决方法
+**处理方法**
 
 ```shell
-xhost +
+xhost + # 允许 Docker 容器访问图形显示服务
 ```
 
-该命令允许 Docker 容器使用图形界面显示。
+### 5.4 驱动读取版本失败后退出
 
----
-
-## 5.4 ROS Driver 出现 get version failed
-
-### 错误信息
+**错误信息**
 
 ```shell
 <ERROR><api.cpp:lidar_get_version:672>: get device version fail.
-
 get version failed.
 ```
 
-### 原因及解决方法
+**处理方法**
 
-设备固件版本过低。
+原文将该问题归因为设备固件过旧，建议升级到匹配的固件版本。实际排查时也应确认 USB 通信和驱动、固件兼容性。
 
-请升级到最新固件版本。
+### 5.5 RViz 长时间无响应
 
----
+**现象**
 
-## 5.5 RVIZ 长时间无响应
+RViz 无响应，随后终端输出 `Device disconnected, waiting for reconnection...`。
 
-### 错误现象
+**处理方法**
 
-RViz 无响应，过一段时间后终端打印：
+断开并重新接通 Odin 模块电源。
 
-```text
-Device disconnected, waiting for reconnection...
-```
+### 5.6 设备无响应
 
-### 解决方法
+**错误信息**
 
-重新给 Odin 模块上电。
+`Missed ok response from device,probably wrong interaction procedure.`
 
----
+**处理方法**
 
-## 5.6 设备没有响应
+按 5.1 节的方法重新上电并初始化。
 
-### 错误信息
+### 5.7 缺少相机标定文件或标定内容不完整
 
-```text
-Missed ok response from device,probably wrong interaction procedure.
-```
+**错误信息**
 
-### 解决方法
+`ERROR：Missing camera node 'cam_0'`
 
-采用 5.1 中的方法：
+**处理方法**
 
-重新给 Odin 设备断电再上电，然后重新初始化 SDK。
+重新插拔 USB，重新获取设备标定文件。
 
----
+### 5.8 启动数据流后立即报告设备断开
 
-## 5.7 设备没有外部标定文件
+**错误信息**
 
-### 错误信息
-
-```text
-ERROR：Missing camera node 'cam_0'
-```
-
-### 解决方法
-
-重新插拔 USB。
-
----
-
-## 5.8 ROS Driver 数据流启动后立即提示设备断开
-
-### 错误信息
-
-```text
+```shell
 Device ready and streams activated
-
 Device detaching...
-
 Wating for device reconnection...
-
 Device disconnected, waiting for reconnection...
 ```
 
-### 原因
+**原因**
 
-该问题主要发生在：
+在连接办公 Wi-Fi、有线网络等复杂网络环境的 ROS 2 系统中较常见。ROS 2 默认使用广播发现，复杂网络可能导致 ROS 发布阻塞，进一步引起设备连接异常。
 
-```text
-ROS2
-```
+**处理方法**
 
-环境中，并且设备连接在复杂网络环境时更容易发生，例如：
-
-* 办公室 WiFi
-* 有线网络
-* 多设备复杂局域网
-
-ROS2 默认使用广播通信。
-
-复杂网络环境可能导致 ROS2 发布操作发生阻塞，最终导致设备连接断开。
-
-### 解决方法
-
-如果不需要跨设备通信，可以限制 ROS2 只使用本机：
+如果不需要跨设备通信，将 ROS 2 通信限制在本机：
 
 ```shell
 export ROS_LOCALHOST_ONLY=1
 ```
 
-如果必须跨设备通信：
+如果需要跨设备通信，应尽量简化网络环境，推荐使用仅包含所需设备的小型局域网。
 
-尽量简化网络环境。
+### 5.9 启动数据流后驱动立即崩溃
 
-推荐使用一个仅包含必要设备的小型局域网。
+**错误信息**
 
----
-
-## 5.9 ROS Driver 数据流启动后立即崩溃
-
-### 错误信息
-
-```text
+```shell
 Device ready and streams activated
-
 [host_sdk_sample-2] process has died ......
 ```
 
-### 测试方法
+**排查方法**
 
-在：
+将 `control_command.yaml` 中的 `sendrgb` 设为 `0`，关闭 `odin1/image` 后重试。如果此时驱动可以运行，可能是系统同时安装多个 OpenCV 版本，导致库混用。
 
-```text
-control_command.yaml
-```
+**处理方法**
 
-中关闭：
+卸载不需要的 OpenCV 版本，保留一套完整且一致的版本，然后重新编译驱动。需要保留多个版本时，参见 5.16 节。
 
-```yaml
-sendrgb = 0
-```
+### 5.10 出现 `TF_OLD_DATA ignoring data` 警告
 
-即禁用：
+**错误信息**
 
-```text
-odin1/image
-```
-
-然后重新测试。
-
-如果关闭 RGB 图像后 Driver 可以正常运行，那么很可能是：
-
-```text
-系统安装了多个 OpenCV 版本
-```
-
-导致的问题。
-
-### 解决方法
-
-删除系统中未使用的 OpenCV 版本。
-
-确保系统只保留：
-
-```text
-一个完整的 OpenCV 版本
-```
-
-然后重新编译 Driver。
-
----
-
-## 5.10 ROS Driver 出现 TF_OLD_DATA ignoring data 警告
-
-### 错误信息
-
-```text
+```shell
 [rviz2-3] Warning: TF_OLD_DATA ignoring data from the past for frame odin1_base_link at time 20.547632 according to authority Authority undetectable
-
 [rviz2-3] Possible reasons are listed at http://wiki.ros.org/tf/Errors%20explained
-
 [rviz2-3]          at line 294 in ./src/buffer_core.cpp
 ```
 
-### 原因
+**原因**
 
-这是 ROS 和 RViz 的一种保护机制。
+ROS 和 RViz 检测到 TF 时间戳冲突，忽略了部分数据。如果保持驱动运行时给 Odin 重新上电，设备内部时间会归零，新数据时间戳便可能与 RViz 缓存的旧数据冲突。
 
-它提示用户：
+**处理方法**
 
-由于时间戳冲突，部分旧 TF 数据被忽略。
+点击 RViz 界面底部的重置按钮，清空内部状态。
 
-通常发生在：
+### 5.11 出现 `unknown cmd code: xx` 错误
 
-1. ROS Driver 一直运行
-2. 用户中途给 Odin 设备断电再重新上电
-3. Odin 内部系统时间被重新初始化
-4. 新设备数据的时间戳与 RViz 中之前保存的数据发生冲突
-
-### 解决方法
-
-RViz GUI 底部有一个：
-
-```text
-Reset
-```
-
-按钮。
-
-点击它可以重置 RViz 内部状态，并停止该警告。
-
----
-
-## 5.11 ROS Driver 出现 unknown cmd code: xx
-
-### 错误信息
+**错误信息**
 
 ```shell
 <ERROR><api.cpp:cmd_data_deal:418>: unknow command code 21.
 ```
 
-### 原因
+**原因**
 
-ROS Driver 版本与设备固件版本不匹配。
+驱动与设备固件版本不匹配，导致驱动无法解码新固件增加的数据。
 
-设备的新固件增加了新的数据格式，但旧版本 ROS Driver 无法解析。
+**处理方法**
 
-### 解决方法
+使用相互匹配的驱动和设备固件版本。
 
-确保：
+### 5.12 USB 访问错误：`LIBUSB_ERROR_BUSY` 或 `LIBUSB_ERROR_ACCESS`
 
-* ROS Driver 使用最新版本
-* 设备 Firmware 使用最新版本
-
-并保持版本兼容。
-
----
-
-## 5.12 USB 设备访问错误
-
-错误可能是：
-
-```text
-LIBUSB_ERROR_BUSY
-```
-
-或者：
-
-```text
-LIBUSB_ERROR_ACCESS
-```
-
-### 错误示例
+**错误信息**
 
 ```shell
 libusb: error [udev_hotplug_event] ignoring udev action bind
-
 LIBUSB_ERROR_BUSY
 ```
 
-或者：
+或：
 
 ```shell
 libusb: error [_get_usbfs_fd] libusb couldn't open USB device /dev/bus/usb/xxx/xxx, errno=13
-
 LIBUSB_ERROR_ACCESS
 ```
 
-### 原因
+**原因**
 
-#### LIBUSB_ERROR_BUSY
+- `LIBUSB_ERROR_BUSY`：其他进程已占用 USB 设备，例如同时运行多个驱动实例，或先前崩溃的程序仍持有设备句柄。
+- `LIBUSB_ERROR_ACCESS`：当前用户没有 USB 访问权限，常见于缺少 udev 规则或用户权限不足。
 
-另一个进程已经占用了 USB 设备。
+**处理 `LIBUSB_ERROR_BUSY`**
 
-常见情况：
-
-* 同时运行了多个 ROS Driver
-* 之前崩溃的 Driver 进程仍然占用设备
-* 其他程序占用了设备句柄
-
-#### LIBUSB_ERROR_ACCESS
-
-当前用户没有权限访问 USB 设备。
-
-通常原因：
-
-* 没有配置 udev 规则
-* 用户权限不足
-
-### LIBUSB_ERROR_BUSY 解决方法
-
-检查是否存在其他 Driver：
+1. 检查是否有其他驱动实例：
 
 ```shell
 ps aux | grep host_sdk_sample
 ```
 
-结束已有进程：
+2. 结束已有驱动实例：
 
 ```shell
 killall host_sdk_sample
 ```
 
-如果问题仍然存在：
+3. 如果问题仍存在，重新插拔 USB 以重置设备状态。
 
-重新插拔 USB 设备以重置设备状态。
+**处理 `LIBUSB_ERROR_ACCESS`**
 
-### LIBUSB_ERROR_ACCESS 解决方法
-
-#### 1. 添加 udev 规则
-
-创建：
-
-```text
-/etc/udev/rules.d/99-odin.rules
-```
-
-内容：
+1. 创建 `/etc/udev/rules.d/99-odin.rules`，写入设备访问规则：
 
 ```shell
 SUBSYSTEM=="usb", ATTR{idVendor}=="2207", ATTR{idProduct}=="0019", MODE="0666", GROUP="plugdev"
 ```
 
-#### 2. 重新加载规则
+2. 重新加载规则：
 
 ```shell
 sudo udevadm control --reload-rules
-
 sudo udevadm trigger
 ```
 
-#### 3. 使用 sudo 运行 Driver
-
-> 不建议在正式环境中使用。
+3. 也可临时以 `sudo` 启动驱动，但不推荐在生产环境中使用。原文命令如下，启动文件名应按实际文件调整：
 
 ```shell
 sudo -E ros2 launch odin_ros_driver odin_ros_driver.launch.py
 ```
 
-#### 4. 确认用户属于 plugdev 组
+4. 确保当前用户属于 `plugdev` 组：
 
 ```shell
 sudo usermod -aG plugdev $USER
 ```
 
-然后：
+修改用户组后，注销并重新登录使其生效。
 
-```text
-注销并重新登录
-```
+### 5.13 ros2 bag 录制丢失高频话题
 
-使用户组修改生效。
+**现象**
 
----
+使用 `ros2 bag record` 录制时，低频话题（点云、图像、普通里程计、`wiwc`）完整，但 `/odin1/imu` 和 `/odin1/odometry_highfreq` 等 400 Hz 话题出现丢帧。离线分析可见消息间隔达到正常周期的两倍以上，而 SDK 或独立运行的 `ros2 topic hz` 不报告丢帧。
 
-## 5.13 ros2 bag 录制高频 Topic 时出现丢帧
+**原因**
 
-### 现象
+驱动以 `RELIABLE` QoS 发布这两个高频话题。原文描述的录制订阅配置为 `history = keep_last`、`depth = 10`，在 400 Hz 下只能缓存约 25 毫秒数据。录制端短暂阻塞，例如磁盘刷新、mcap/sqlite 分块写入或调度抖动，都可能使订阅队列溢出，在订阅端丢弃最旧数据。SDK 和发布端不受影响，因此其日志和独立订阅者不一定能观察到丢帧。
 
-使用：
+**处理方法**
 
-```shell
-ros2 bag record
-```
-
-录制数据时：
-
-低频 Topic：
-
-* cloud
-* image
-* odometry
-* wiwc
-
-基本完整，没有明显丢失。
-
-但是：
-
-```text
-/odin1/imu
-```
-
-频率：
-
-```text
-400 Hz
-```
-
-以及：
-
-```text
-/odin1/odometry_highfreq
-```
-
-频率：
-
-```text
-400 Hz
-```
-
-会出现消息丢失。
-
-分析脚本可能发现：
-
-消息之间的时间间隔达到正常周期的：
-
-```text
-2 倍甚至更多
-```
-
-但是：
-
-* SDK 端没有报告丢帧
-* 在线订阅者，例如 `ros2 topic hz` 也没有发现丢帧
-
----
-
-### 原因
-
-Driver 使用：
-
-```text
-RELIABLE
-```
-
-QoS 发布：
-
-```text
-/odin1/imu
-```
-
-和：
-
-```text
-/odin1/odometry_highfreq
-```
-
-而默认情况下：
-
-```shell
-ros2 bag record
-```
-
-订阅使用：
-
-```text
-history = keep_last
-depth = 10
-```
-
-对于：
-
-```text
-400 Hz
-```
-
-的数据流来说：
-
-```text
-10 个消息
-```
-
-只能缓存大约：
-
-```text
-25 ms
-```
-
-的数据。
-
-一旦录制程序出现短暂延迟，例如：
-
-* 磁盘写入
-* mcap/sqlite 写入数据块
-* 系统调度抖动
-
-订阅队列就会溢出。
-
-DDS 会在：
-
-**订阅端**
-
-静默丢弃最旧的数据。
-
-因此：
-
-* SDK 不会发现丢帧
-* Publisher 不会发现问题
-* `ros2 topic hz` 可能正常
-
-真正丢失发生在：
-
-```text
-ros2 bag recorder 的订阅端
-```
-
----
-
-### 解决方案
-
-使用仓库提供的 QoS 配置文件：
-
-```text
-script/rosbag2_qos.yaml
-```
-
-提高高频 Topic 的订阅队列深度。
-
-配置内容：
+使用 `script/rosbag2_qos.yaml` 增大录制端高频话题订阅队列：
 
 ```yaml
 # script/rosbag2_qos.yaml
-
 /odin1/imu:
-
   reliability: reliable
-
   history: keep_last
-
   depth: 4000
 
-
 /odin1/odometry_highfreq:
-
   reliability: reliable
-
   history: keep_last
-
   depth: 4000
 ```
 
-录制时使用：
+录制时通过 `--qos-profile-overrides-path` 应用该配置：
 
 ```shell
 ros2 bag record -a \
@@ -1602,11 +777,7 @@ ros2 bag record -a \
     -o my_bag
 ```
 
----
-
-### 只录制高频 Topic
-
-也可以：
+也可以只录制指定话题：
 
 ```shell
 ros2 bag record \
@@ -1615,153 +786,217 @@ ros2 bag record \
     /odin1/imu /odin1/odometry_highfreq /odin1/odometry /odin1/wiwc /odin1/cloud_raw
 ```
 
----
+**进一步优化**
 
-## 可选的进一步优化
-
-如果应用上述 QoS 配置后仍然出现丢帧，通常是磁盘速度较慢导致的。
-
-可以进一步进行以下优化。
-
-### 1. 使用 MCAP 后端
-
-并增加内部缓存：
+如果应用配置后仍丢帧，尤其是磁盘较慢时，可以使用 mcap 和更大的内部缓存，并增大内核 UDP 套接字缓冲区：
 
 ```shell
+# 使用 mcap 后端和更大的内部缓存（比 sqlite3 快）。
 ros2 bag record -s mcap --max-cache-size 1073741824 \
     --qos-profile-overrides-path src/odin_ros_driver/script/rosbag2_qos.yaml \
     -o my_bag \
     /odin1/imu /odin1/odometry_highfreq ...
-```
 
-MCAP 通常比：
-
-```text
-sqlite3
-```
-
-录制性能更高。
-
----
-
-### 2. 增大 Linux UDP Socket Buffer
-
-400Hz 的 RELIABLE 数据流可能受到 UDP Socket Buffer 限制。
-
-默认 Buffer 大约只有：
-
-```text
-208 KB
-```
-
-可以执行：
-
-```shell
+# 增大内核 UDP 套接字缓冲区（400 Hz 可靠传输的常见瓶颈，默认仅 208 KB）。
 sudo sysctl -w net.core.rmem_max=33554432
-
 sudo sysctl -w net.core.wmem_max=33554432
 ```
 
-增大系统网络缓冲区。
+**ROS 1 是否存在同样的问题？**
 
----
+原文说明，ROS 1 使用基于 TCP 的发布和订阅，各端以 `queue_size` 控制队列，不存在相同的 ROS 2 QoS 配置匹配问题。此驱动的 ROS 1 分支已将 IMU 和高频里程计发布队列设为 `4000`（见 `include/host_sdk_sample.h` 的 `initialize_publishers`），因此不需要上述 ROS 2 专用配置。这不代表 ROS 1 在任意负载下都不会丢失录制数据。
 
-## ROS1 是否存在相同问题？
+### 5.14 Ubuntu 24.04 / ROS 2 Jazzy 下 RViz 点云与 TF 转换失败
 
-不存在。
+**现象**
 
-ROS1 使用：
+RViz 的 Fixed Frame 设为 `odom` 时，`lidar` 坐标系下的 `cloud_raw` 无法显示，`odom → imu → lidar` 链条出现变换或时间外推错误，而相同配置在 Ubuntu 22.04 / Humble 下可以运行。
 
-```text
-TCP
+**原因**
+
+设备点云时间戳通常比里程计时间戳超前约 100 毫秒。原文说明 Jazzy 的 tf2 时间戳查找更严格；如果 TF 只随里程计发布，缓存中可能没有覆盖点云时间戳的变换，导致查找失败。
+
+**处理方法**
+
+在 `config/control_command.yaml` 中将 `tf_extra_publish_rate` 设为大于 `0` 的数值，例如 `100`。驱动会启用额外定时器，按指定频率补发 `odom → imu` 和 `imu → lidar` 变换，推进时间戳以覆盖点云数据时间。
+
+```yaml
+# config/control_command.yaml
+tf_extra_publish_rate: 100  # 0：关闭；大于 0：补发频率，单位 Hz（ROS 2 Jazzy / Ubuntu 24.04 推荐启用）
 ```
 
-进行发布订阅。
+Ubuntu 22.04 / Humble 和 ROS 1 通常不需要此设置，可以保持为 `0`。
 
-发布端和订阅端主要使用：
+### 5.15 低性能主机出现 USB 内存或传输错误
 
-```text
-queue_size
-```
-
-参数，不存在 ROS2 中 Publisher 和 Subscriber QoS Profile 不匹配的问题。
-
-本驱动的 ROS1 实现中：
-
-```text
-IMU
-```
-
-和：
-
-```text
-odometry_highfreq
-```
-
-已经设置：
-
-```text
-queue_size = 4000
-```
-
-位于：
-
-```text
-include/host_sdk_sample.h
-```
-
-中的：
-
-```text
-initialize_publishers
-```
-
-ROS1 分支。
-
-同时：
+**错误信息**
 
 ```shell
-rosbag record
+<ERROR>: submit x transfer fail LIBUSB_ERROR_NO_MEM.
+<ERROR>: transfer error: LIBUSB_TRANSFER_ERROR.
 ```
 
-使用 TCP 传输，本身提供可靠传输。
+**现象**
 
-因此：
+驱动在性能较强的 PC 上正常，但部署到性能较弱的主机，例如嵌入式 ARM 板，运行一段时间后，SDK 先报告 `LIBUSB_ERROR_NO_MEM`，随后连续出现 `transfer error`。设备发送速率未变化，变化的是运行 SDK 的主机。
 
-```text
-ROS1
+**原因**
+
+libusb 提交到内核的异步传输会占用有限的 usbfs 内存池，其配置位于 `/sys/module/usbcore/parameters/usbfs_memory_mb`，原文默认值为 16 MB。较慢的主机可能无法及时处理完成事件，导致未完成的 OUT 发送请求堆积，最终返回 `LIBUSB_ERROR_NO_MEM`，随后产生 `LIBUSB_TRANSFER_ERROR`。
+
+**处理方法**
+
+1. 运行时增大 usbfs 内存上限，立即生效，重启后恢复：
+
+```shell
+# 查看当前值（默认 16 MB）
+cat /sys/module/usbcore/parameters/usbfs_memory_mb
+
+# 调大到 128 MB
+echo 128 | sudo tee /sys/module/usbcore/parameters/usbfs_memory_mb
 ```
 
-环境下不会出现这种特定的高频数据录制丢帧模式。
+2. 如需重启后仍保留配置，可选择以下一种方式：
 
-无需额外配置。
+```shell
+# 方式 A：内核启动参数（编辑 GRUB / 板子的 bootargs）
+usbcore.usbfs_memory_mb=128
 
----
-
-# 6. 联系方式
-
-可以通过以下邮箱联系技术支持：
-
-```text
-support@manifoldtech.cn
+# 方式 B：modprobe 配置
+echo "options usbcore usbfs_memory_mb=128" | sudo tee /etc/modprobe.d/usbcore.conf
 ```
 
-为了帮助 FAE 工程师诊断问题，请提供以下信息：
+**说明**
 
-## 1. 当前固件版本
+增大 `usbfs_memory_mb` 是提高缓冲余量的缓解措施。SDK 的 USB 层已限制在途 OUT 请求数量，并在各终止状态释放传输缓冲，避免暂时错误演变成持续内存泄漏。对于较慢主机或大文件传输，例如重定位地图，仍建议提供较大的 usbfs 内存池，如 128 MB。
 
-例如：
+### 5.16 RGB 发布时因 cv_bridge / OpenCV 不匹配而崩溃
+
+**现象**
+
+驱动可以连接设备并激活数据流，但发布第一帧 RGB 时就发生段错误或堆损坏。这与 5.9 节的问题原因相同：ROS 的 `cv_bridge` 使用一种 OpenCV 编译，驱动却链接另一种版本。
+
+**原因**
+
+启用 `sendrgb: 1` 后，主机使用 `cv::imdecode(...)` 解码图像，经 `cv_bridge::toImageMsg()` 发布。同一进程若加载两套 `libopencv_core`，`cv::Mat` 可能由一套库创建、另一套库释放，跨越 ABI 边界而导致内存损坏。
+
+**受影响的 ROS 版本**
+
+这不是某个 ROS 版本独有的问题。无论 ROS 1 或 ROS 2，只要 `cv_bridge` 与驱动使用的 OpenCV 不一致，就可能受影响。Jetson 等嵌入式平台较常见，因为预装 OpenCV 可能与 ROS 软件包编译时的版本不同。
+
+下表保留原文列出的发行版、分支和典型版本，具体可用分支与版本应以实际仓库及系统为准。
+
+| ROS 发行版 | 类型 | `vision_opencv` 分支 | 典型系统 OpenCV |
+|---|---|---|---|
+| Kinetic（Ubuntu 16.04） | ROS 1 | `kinetic` | 3.3.1 |
+| Melodic（Ubuntu 18.04） | ROS 1 | `melodic` | 3.2 / 3.4 |
+| Noetic（Ubuntu 20.04） | ROS 1 | `noetic` | 4.2.0（apt）/ 4.5.4（Jetson） |
+| Foxy（Ubuntu 20.04） | ROS 2 | `foxy` | 4.2.0 |
+| Galactic（Ubuntu 20.04） | ROS 2 | `galactic` | 4.2.0 |
+| Humble（Ubuntu 22.04） | ROS 2 | `humble` | 4.5.x |
+| Iron（Ubuntu 22.04） | ROS 2 | `iron` | 4.5.x |
+| Jazzy（Ubuntu 24.04） | ROS 2 | `rolling` | 4.5.x / 4.6.x |
+
+如果仅使用一套 OpenCV，且与 `cv_bridge` 一致，就不会触发这里描述的版本混用问题。
+
+**处理方法**
+
+5.9 节建议卸载多余的 OpenCV。如果需要保留多个版本，可以在工作空间内基于指定 OpenCV 重新编译 `cv_bridge`，使它和驱动使用同一版本，编译产物保存在工作空间内。
+
+原文称驱动会读取 `cv_bridge-extras.cmake` 并自动锁定 OpenCV 版本；当前压缩包的 `CMakeLists.txt` 实际仅调用 `find_package(OpenCV REQUIRED)`，不能依赖该自动锁定行为。编译时应显式指定匹配的 `OpenCV_DIR`，并通过下述 `ldd` 检查最终加载的库。
+
+**步骤 0：确认 ROS 发行版**
+
+```shell
+echo $ROS_DISTRO
+# 示例输出：noetic（ROS 1）
+# 示例输出：foxy（ROS 2）
+```
+
+下方命令以 `$ROS_DISTRO` 表示实际发行版，请先加载对应 ROS 环境，或替换成发行版名称。
+
+**步骤 1：下载对应分支的 `vision_opencv`**
+
+将仓库克隆到工作空间 `src/` 下，与 `odin_ros_driver` 并列：
+
+```shell
+cd <your_workspace>/src
+git clone -b $ROS_DISTRO https://github.com/ros-perception/vision_opencv.git
+```
+
+如果发行版名称与分支名称不同，需替换成实际分支。原文以 Jazzy 对应 `rolling` 为例，实际选择时应确认当前仓库的分支兼容性。
+
+**步骤 2：先编译 cv_bridge，再编译驱动**
+
+必须先构建工作空间中的 `cv_bridge`，让驱动可以找到它。仅调整构建顺序不能保证 OpenCV 一致，还应显式指定同一套 OpenCV 配置。
+
+ROS 1（`catkin_make`）示例：
+
+```shell
+# 先将 cv_bridge 编译到工作空间。
+source /opt/ros/$ROS_DISTRO/setup.bash
+cd <your_catkin_ws>
+catkin_make -DBUILD_SYSTEM=ROS1 -DCATKIN_WHITELIST_PACKAGES="cv_bridge" -j$(nproc)
+
+# 再编译驱动，使用工作空间中的 cv_bridge（此时不要清理 build/devel）。
+# 请另行确保编译时指定的 OpenCV 与 cv_bridge 一致。
+cd <your_catkin_ws>/src/odin_ros_driver/script
+./build_ros.sh
+```
+
+完整构建也会按依赖关系先构建 `cv_bridge`，再构建驱动：
+
+```shell
+cd <your_catkin_ws> && catkin_make -DBUILD_SYSTEM=ROS1 -j$(nproc)
+```
+
+ROS 2（`colcon`）示例：
+
+```shell
+# 先将 cv_bridge 编译到工作空间。
+source /opt/ros/$ROS_DISTRO/setup.bash
+cd <your_ros2_ws>
+colcon build --packages-select cv_bridge
+
+# 先加载工作空间环境，使驱动找到其中的 cv_bridge，然后编译驱动。
+source <your_ros2_ws>/install/setup.bash
+colcon build --packages-select odin_ros_driver
+```
+
+**验证**
+
+```shell
+# ROS 1
+source /opt/ros/$ROS_DISTRO/setup.bash
+source <your_catkin_ws>/devel/setup.bash
+ldd <your_catkin_ws>/devel/lib/odin_ros_driver/host_sdk_sample | grep -iE 'cv_bridge|opencv_core'
+
+# ROS 2
+source /opt/ros/$ROS_DISTRO/setup.bash
+source <your_ros2_ws>/install/setup.bash
+ldd <your_ros2_ws>/install/odin_ros_driver/lib/odin_ros_driver/host_sdk_sample | grep -iE 'cv_bridge|opencv_core'
+```
+
+修复前，驱动可能从 `/opt/ros/$ROS_DISTRO/lib/` 加载 `libcv_bridge.so`，同时混入不匹配的 OpenCV。使用工作空间重编译方案后，应从工作空间加载 `cv_bridge`，并确保所有 `libopencv_*` 来自同一兼容版本。如果直接让驱动匹配系统 `cv_bridge`，则无需更换 `cv_bridge` 的加载路径。
+
+运行驱动，确认 `/odin1/image` 持续发布且不再崩溃。
+
+请在一致的 ROS 环境中运行，避免同时加载不同发行版，例如同时加载 Noetic 和 Foxy，从而使 `LD_LIBRARY_PATH` 混入不匹配的库。
+
+## 6. 联系方式
+
+技术支持邮箱：support@manifoldtech.cn。
+
+为便于现场应用工程师（FAE）诊断问题，请提供：
+
+1. 当前驱动和设备固件版本。原文给出的日志示例如下；注意其中 `ros_driver_version` 是主机驱动版本，设备固件请同时提供 `soc_version`、`slam_version` 等字段。
 
 ```shell
 [device_version_capture]: ros_driver_version: [Version Number]
 ```
 
-## 2. 当前使用的电源适配器和转换线照片
-
-## 3. 问题是偶发还是稳定复现
-
-## 4. 提供出现问题时的场景图片
-
-## 5. 第五部分 FAQ 中的故障排查方法是否解决了问题
-
-## 6. 希望问题解决的预期时间
+2. 使用的电源适配器和转接线照片。
+3. 问题是偶发还是持续出现。
+4. 问题现场的图片。
+5. 第 5 节排查方法是否有效。
+6. 期望的问题解决时间。

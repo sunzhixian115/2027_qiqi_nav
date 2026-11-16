@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
   nh->get_parameter("disRatioZ", disRatioZ);
 
   auto subOdometry = nh->create_subscription<nav_msgs::msg::Odometry>(
-      "lidar_odometry", 5, odometryHandler);
+      "lidar_odometry", rclcpp::SensorDataQoS(), odometryHandler);
 
   auto subLaserCloud = nh->create_subscription<sensor_msgs::msg::PointCloud2>(
       "registered_scan", 5, laserCloudHandler);
@@ -273,9 +273,11 @@ int main(int argc, char **argv) {
   downSizeFilter.setLeafSize(scanVoxelSize, scanVoxelSize, scanVoxelSize);
 
   rclcpp::Rate rate(100);
-  bool status = rclcpp::ok();
-  while (status) {
-    rclcpp::spin_some(nh);
+  // 执行器只创建一次，避免 SIGINT 后临时执行器再创建无效 guard condition。
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(nh);
+  while (rclcpp::ok()) {
+    executor.spin_some();
     if (newlaserCloud) {
       newlaserCloud = false;
 
@@ -687,8 +689,6 @@ int main(int argc, char **argv) {
       pubLaserCloud->publish(terrainCloud2);
     }
 
-    // status = ros::ok();
-    status = rclcpp::ok();
     rate.sleep();
   }
 

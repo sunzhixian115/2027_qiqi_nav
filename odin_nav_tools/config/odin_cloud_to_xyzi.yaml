@@ -1,0 +1,20 @@
+odin_cloud_to_xyzi:
+  ros__parameters:
+    # 原始 Odin 点云保持不变；适配器只改变输出副本。
+    input_topic: /odin1/cloud_slam
+    # 输出供 MincoPlanner 内部 ROGMap 使用。
+    output_topic: /odin1/cloud_slam_xyzi
+    odom_topic: /odin1/odometry
+
+    # ROGMap resolution 为 0.10 m，输入先用 0.02 m Voxel 保留几何余量。
+    voxel_size: 0.02
+
+    # 以 Odin 当前 odom 位置为中心裁剪局部点云。
+    crop_enabled: true
+    crop_size_x: 12.0
+    crop_size_y: 3.0
+    crop_size_z: 0.5
+
+    # 去除机器人原点附近的自反射点，单位米。
+    min_range: 0.25
+

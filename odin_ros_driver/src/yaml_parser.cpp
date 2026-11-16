@@ -130,7 +130,15 @@ bool YamlParser::loadConfig() {
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to parse key " << key << ": " << e.what() << std::endl;
                 }
-            } else {
+            } else if (allowed_key_w_float_val.find(key) != allowed_key_w_float_val.end()) {
+                try {
+                    double value = value_node.as<double>();
+                    register_keys_float_val_[key] = value;
+                    std::cerr << "Loaded key: " << key << " = " << value << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to parse key " << key << ": " << e.what() << std::endl;
+                }
+            } else if (allowed_key_w_int_val.find(key) != allowed_key_w_int_val.end()) {
                 // Regular (non-custom) integer parameter
                 try {
                     int value = value_node.as<int>();
@@ -139,6 +147,9 @@ bool YamlParser::loadConfig() {
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to parse key " << key << ": " << e.what() << std::endl;
                 }
+            } else {
+                std::cerr << "[ERROR] Unknown/unsupported key in register_keys: '" << key
+                          << "'. Please check spelling or remove it." << std::endl;
             }
         }
 
